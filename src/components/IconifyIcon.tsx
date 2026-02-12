@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react';
-import {Image, Text} from 'react-native';
+import {Text} from 'react-native';
+import {SvgXml} from 'react-native-svg';
 
 interface IconifyIconProps {
   icon: string;
@@ -8,73 +9,78 @@ interface IconifyIconProps {
   fallback?: string;
 }
 
-// 内存缓存，避免重复请求
-const uriCache: Record<string, string> = {};
+const svgCache = new Map<string, string>();
+const failedCache = new Set<string>();
 
-function buildSvgDataUri(svg: string, color?: string): string {
-  let processed = svg;
-  if (color) {
-    processed = processed.replace(/currentColor/g, color);
-  }
-  // 编码为 data URI
-  const encoded = encodeURIComponent(processed)
-    .replace(/'/g, '%27')
-    .replace(/"/g, '%22');
-  return `data:image/svg+xml,${encoded}`;
-}
-
-/**
- * 渲染 Iconify 图标（纯 JS，无原生 SVG 依赖）。
- * 接受 "prefix:name" 格式（如 "mdi:cash"），通过 Iconify API 获取 SVG，
- * 转为 data URI 用 Image 渲染。
- * 不含 ":" 则当作 emoji 回退。
- */
 const IconifyIcon = ({icon, size = 24, color, fallback = '📌'}: IconifyIconProps) => {
-  const cacheKey = `${icon}_${color || ''}`;
-  const [uri, setUri] = useState<string | null>(uriCache[cacheKey] || null);
+  const [svgXml, setSvgXml] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
+  const isIconify = icon && icon.includes(':');
+  const cacheKey = `${icon}_${color || ''}`;
+
   useEffect(() => {
-    if (!icon || !icon.includes(':')) {
+    if (!isIconify) return;
+    if (failedCache.has(icon)) {
+      setFailed(true);
       return;
     }
-    if (uriCache[cacheKey]) {
-      setUri(uriCache[cacheKey]);
+    if (svgCache.has(cacheKey)) {
+      setSvgXml(svgCache.get(cacheKey)!);
       return;
     }
 
-    setFailed(false);
-    const [prefix, name] = icon.split(':');
-    fetch(`https://api.iconify.design/${prefix}/${name}.svg`)
+    const [prefix, ...rest] = icon.split(':');
+    const name = rest.join(':');
+    const colorParam = color ? `?color=${encodeURIComponent(color)}` : '';
+    const url = `https://api.iconify.design/${prefix}/${name}.svg${colorParam}`;
+
+    let cancelled = false;
+    fetch(url)
       .then(res => {
-        if (!res.ok) throw new Error('not found');
+        if (!res.ok) throw new Error('fetch failed');
         return res.text();
       })
       .then(svg => {
-        const dataUri = buildSvgDataUri(svg, color);
-        uriCache[cacheKey] = dataUri;
-        setUri(dataUri);
+        if (cancelled) return;
+        svgCache.set(cacheKey, svg);
+        setSvgXml(svg);
       })
-      .catch(() => setFailed(true));
-  }, [icon, color, cacheKey]);
+      .catch(() => {
+        if (cancelled) return;
+        failedCache.add(icon);
+        setFailed(true);
+      });
 
-  // 非 Iconify 格式或加载失败，显示 fallback
-  if (!icon || !icon.includes(':') || failed) {
-    return <Text style={{fontSize: size * 0.8}}>{icon && !icon.includes(':') ? icon : fallback}</Text>;
+    return () => { cancelled = true; };
+  }, [icon, color, isIconify, cacheKey]);
+
+  // 非 iconify 格式，显示文本
+  if (!isIconify) {
+    return (
+      <Text style={{fontSize: size * 0.8, color: color || undefined}}>
+        {icon || fallback}
+      </Text>
+    );
   }
 
-  if (!uri) {
-    // 加载中，显示占位
-    return <Text style={{fontSize: size * 0.8}}>{fallback}</Text>;
+  if (failed || failedCache.has(icon)) {
+    return (
+      <Text style={{fontSize: size * 0.8, color: color || undefined}}>
+        {fallback}
+      </Text>
+    );
   }
 
-  return (
-    <Image
-      source={{uri}}
-      style={{width: size, height: size}}
-      resizeMode="contain"
-    />
-  );
+  if (!svgXml) {
+    return (
+      <Text style={{fontSize: size * 0.8, color: color || undefined}}>
+        {fallback}
+      </Text>
+    );
+  }
+
+  return <SvgXml xml={svgXml} width={size} height={size} />;
 };
 
 export default IconifyIcon;

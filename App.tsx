@@ -12,6 +12,7 @@ import DiscoverScreen from './src/screens/DiscoverScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import BookManageScreen from './src/screens/BookManageScreen';
 import LoginScreen from './src/screens/LoginScreen';
+import ReceiptScreen from './src/screens/ReceiptScreen';
 import {getToken, removeToken} from './src/services/auth';
 
 const Tab = createBottomTabNavigator();
@@ -159,6 +160,14 @@ const App = () => {
             options={{
               headerShown: false,
               animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="拍照记账"
+            component={ReceiptScreen}
+            options={{
+              headerShown: false,
+              animation: 'slide_from_bottom',
             }}
           />
         </Stack.Navigator>

@@ -2,7 +2,7 @@ import {authFetch} from './api';
 
 export interface Tag {
   id: number;
-  name: string;
+  tagName: string;
   color: string;
   icon: string;
 }

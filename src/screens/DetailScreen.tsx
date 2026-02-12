@@ -12,6 +12,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {useNavigation} from '@react-navigation/native';
 import {
   getTransactionDetails,
   DailyGroup,
@@ -39,6 +40,7 @@ const formatTime = (dateStr: string) => {
 const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
 const DetailScreen = () => {
+  const navigation = useNavigation<any>();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerYear, setPickerYear] = useState(currentDate.getFullYear());
@@ -278,7 +280,25 @@ const DetailScreen = () => {
         </View>
       </View>
 
-      <View style={styles.body}>{renderBody()}</View>
+      <View style={styles.body}>
+        {renderBody()}
+        {/* 悬浮按钮组 */}
+        <View style={styles.fabGroup}>
+          <TouchableOpacity
+            style={styles.addFab}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('拍照记账')}
+            accessibilityLabel="拍照记账">
+            <Text style={styles.addFabText}>+</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.voiceFab}
+            activeOpacity={0.8}
+            accessibilityLabel="语音输入">
+            <IconifyIcon icon="mdi:microphone" size={28} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {/* 月份选择弹窗 */}
       <Modal
@@ -391,6 +411,45 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F4F7',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+  },
+  voiceFab: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#3B7DD8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#3B7DD8',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  fabGroup: {
+    position: 'absolute',
+    right: 20,
+    bottom: 28,
+    alignItems: 'center',
+    gap: 12,
+  },
+  addFab: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#51CF66',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#51CF66',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  addFabText: {
+    fontSize: 28,
+    color: '#fff',
+    fontWeight: '300',
+    lineHeight: 30,
   },
   listContent: {paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24},
   // Section header
