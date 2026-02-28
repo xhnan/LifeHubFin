@@ -19,6 +19,7 @@ import {getMyBooks, Book} from '../services/book';
 import {getAccounts, Account} from '../services/account';
 import {createTransaction, EntryRequest} from '../services/transaction';
 import IconifyIcon from '../components/IconifyIcon';
+import DateTimePickerComponent from '../components/DateTimePicker';
 
 const ACCOUNT_TYPE_LABEL: Record<string, string> = {
   EXPENSE: '支出', INCOME: '收入', ASSET: '资产', LIABILITY: '负债', EQUITY: '权益',
@@ -43,6 +44,7 @@ const ReceiptScreen = ({navigation}: any) => {
   const [payAccountId, setPayAccountId] = useState<number | string | null>(null);
 
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
 
   useEffect(() => {
     getMyBooks()
@@ -230,17 +232,12 @@ const ReceiptScreen = ({navigation}: any) => {
             />
           </View>
           <View style={s.divider} />
-          <View style={s.row}>
+          <TouchableOpacity style={s.row} onPress={() => setDatePickerVisible(true)} activeOpacity={0.55}>
             <Text style={s.rowEmoji}>📅</Text>
             <Text style={s.rowLabel}>日期</Text>
-            <TextInput
-              style={s.rowInput}
-              placeholder="yyyy-MM-dd HH:mm"
-              placeholderTextColor="#D0D5DD"
-              value={transDate}
-              onChangeText={setTransDate}
-            />
-          </View>
+            <Text style={s.rowValue}>{transDate}</Text>
+            <Text style={s.rowArrow}>›</Text>
+          </TouchableOpacity>
         </View>
 
         {/* 提交 */}
@@ -294,6 +291,17 @@ const ReceiptScreen = ({navigation}: any) => {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* 日期时间选择器 */}
+      <DateTimePickerComponent
+        visible={datePickerVisible}
+        value={transDate}
+        onConfirm={(dateTime) => {
+          setTransDate(dateTime);
+          setDatePickerVisible(false);
+        }}
+        onCancel={() => setDatePickerVisible(false)}
+      />
     </SafeAreaView>
   );
 };

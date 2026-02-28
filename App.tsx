@@ -14,6 +14,7 @@ import BookManageScreen from './src/screens/BookManageScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import ReceiptScreen from './src/screens/ReceiptScreen';
 import {getToken, removeToken} from './src/services/auth';
+import {registerTokenExpiredCallback} from './src/services/navigationService';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -110,6 +111,12 @@ const App = () => {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
+    // 注册 Token 过期回调
+    registerTokenExpiredCallback(() => {
+      setToken(null);
+    });
+
+    // 检查本地是否有 Token
     getToken().then(t => {
       setToken(t);
       setChecking(false);

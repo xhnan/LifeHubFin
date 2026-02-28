@@ -18,6 +18,7 @@ import {getMyBooks, Book} from '../services/book';
 import {getAccounts, Account} from '../services/account';
 import {getTags, Tag} from '../services/tag';
 import IconifyIcon from '../components/IconifyIcon';
+import DateTimePickerComponent from '../components/DateTimePicker';
 import {
   createTransaction,
   EntryRequest,
@@ -83,6 +84,7 @@ const AddScreen = ({navigation}: any) => {
   const [pickerTarget, setPickerTarget] = useState('');
   const [pickerFilter, setPickerFilter] = useState<string[]>([]);
   const [bookPickerVisible, setBookPickerVisible] = useState(false);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
 
   const accent = MODE_ACCENT[mode];
 
@@ -357,11 +359,12 @@ const AddScreen = ({navigation}: any) => {
               <TextInput style={$.rowInput} placeholder="选填，自动生成" placeholderTextColor="#D0D5DD" value={description} onChangeText={setDescription} maxLength={100} />
             </View>
             <View style={$.divider} />
-            <View style={$.row}>
+            <TouchableOpacity style={$.row} onPress={() => setDatePickerVisible(true)} activeOpacity={0.55}>
               <View style={[$.rowIcon, {backgroundColor: '#F0F6FF'}]}><Text style={{fontSize: 16}}>📅</Text></View>
               <Text style={$.rowLabel}>日期</Text>
-              <TextInput style={$.rowInput} placeholder="yyyy-MM-dd HH:mm" placeholderTextColor="#D0D5DD" value={transDate} onChangeText={setTransDate} />
-            </View>
+              <Text style={$.rowValue}>{transDate}</Text>
+              <Text style={$.rowArrow}>›</Text>
+            </TouchableOpacity>
           </View>
 
           {/* 标签 */}
@@ -446,6 +449,17 @@ const AddScreen = ({navigation}: any) => {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* 日期时间选择器 */}
+      <DateTimePickerComponent
+        visible={datePickerVisible}
+        value={transDate}
+        onConfirm={(dateTime) => {
+          setTransDate(dateTime);
+          setDatePickerVisible(false);
+        }}
+        onCancel={() => setDatePickerVisible(false)}
+      />
     </SafeAreaView>
   );
 };

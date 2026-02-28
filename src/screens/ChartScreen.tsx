@@ -19,6 +19,7 @@ import {
   getAccountBalances, AccountBalance,
 } from '../services/statistics';
 import IconifyIcon from '../components/IconifyIcon';
+import MonthPicker, {createQuickOptions} from '../components/MonthPicker';
 
 const SW = Dimensions.get('window').width;
 type Tab = 'overview' | 'category' | 'asset';
@@ -30,6 +31,7 @@ const ChartScreen = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [tab, setTab] = useState<Tab>('overview');
   const [loading, setLoading] = useState(true);
+  const [pickerVisible, setPickerVisible] = useState(false);
 
   // 数据
   const [monthly, setMonthly] = useState<MonthlyStatistics | null>(null);
@@ -86,6 +88,12 @@ const ChartScreen = () => {
     const d = new Date(currentDate);
     d.setMonth(d.getMonth() + offset);
     setCurrentDate(d);
+  };
+
+  const openPicker = () => setPickerVisible(true);
+
+  const handleMonthSelect = (selectedYear: number, selectedMonth: number) => {
+    setCurrentDate(new Date(selectedYear, selectedMonth - 1, 1));
   };
 
   // ── 概览 Tab ──
@@ -312,7 +320,10 @@ const ChartScreen = () => {
           <TouchableOpacity onPress={() => changeMonth(-1)} hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
             <Text style={s.navArrow}>‹</Text>
           </TouchableOpacity>
-          <Text style={s.navDate}>{year}年{month}月</Text>
+          <TouchableOpacity onPress={openPicker} style={s.dateBtn} activeOpacity={0.7}>
+            <Text style={s.navDate}>{year}年{month}月</Text>
+            <Text style={s.dateDrop}>▾</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => changeMonth(1)} hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
             <Text style={s.navArrow}>›</Text>
           </TouchableOpacity>
@@ -342,6 +353,15 @@ const ChartScreen = () => {
         ) : tab === 'overview' ? renderOverview() : tab === 'category' ? renderCategory() : renderAsset()}
         <View style={{height: 30}} />
       </ScrollView>
+
+      <MonthPicker
+        visible={pickerVisible}
+        currentYear={year}
+        currentMonth={month}
+        onSelect={handleMonthSelect}
+        onClose={() => setPickerVisible(false)}
+        quickOptions={createQuickOptions()}
+      />
     </SafeAreaView>
   );
 };
@@ -351,7 +371,17 @@ const s = StyleSheet.create({
   header: {backgroundColor: '#3B7DD8', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16},
   navRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 14},
   navArrow: {fontSize: 26, color: 'rgba(255,255,255,0.6)', paddingHorizontal: 20, fontWeight: '300'},
+  dateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginHorizontal: 8,
+  },
   navDate: {fontSize: 17, fontWeight: '700', color: '#fff'},
+  dateDrop: {fontSize: 10, color: 'rgba(255,255,255,0.6)', marginLeft: 6},
 
   tabBar: {flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 14, padding: 3, gap: 3},
   tabItem: {flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRadius: 12, gap: 4},

@@ -20,8 +20,8 @@ import {
 } from '../services/transaction';
 import {getMyBooks} from '../services/book';
 import IconifyIcon from '../components/IconifyIcon';
+import MonthPicker, {createQuickOptions} from '../components/MonthPicker';
 
-const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 const SCREEN_W = Dimensions.get('window').width;
 
 /** 获取月份的起止日期 */
@@ -43,7 +43,6 @@ const DetailScreen = () => {
   const navigation = useNavigation<any>();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [pickerYear, setPickerYear] = useState(currentDate.getFullYear());
 
   const [bookId, setBookId] = useState<number | null>(null);
   const [dailyGroups, setDailyGroups] = useState<DailyGroup[]>([]);
@@ -98,11 +97,13 @@ const DetailScreen = () => {
     }
   }, [bookId, year, month]);
 
+  // 当bookId或currentDate变化时查询数据（currentDate变化会导致year/month变化）
   useEffect(() => {
     if (!bookId) return;
     setLoading(true);
     fetchDetails().finally(() => setLoading(false));
-  }, [bookId, fetchDetails]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookId, currentDate]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -119,18 +120,17 @@ const DetailScreen = () => {
     [currentDate],
   );
 
-  const selectMonth = useCallback(
-    (m: number) => {
-      setCurrentDate(new Date(pickerYear, m - 1, 1));
+  const handleMonthSelect = useCallback(
+    (selectedYear: number, selectedMonth: number) => {
+      setCurrentDate(new Date(selectedYear, selectedMonth - 1, 1));
       setPickerVisible(false);
     },
-    [pickerYear],
+    [],
   );
 
   const openPicker = useCallback(() => {
-    setPickerYear(year);
     setPickerVisible(true);
-  }, [year]);
+  }, []);
 
   // SectionList 数据
   const sections = dailyGroups.map(group => ({
@@ -300,62 +300,14 @@ const DetailScreen = () => {
         </View>
       </View>
 
-      {/* 月份选择弹窗 */}
-      <Modal
+      <MonthPicker
         visible={pickerVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPickerVisible(false)}>
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={() => setPickerVisible(false)}>
-          <View style={styles.pickerCard} onStartShouldSetResponder={() => true}>
-            <View style={styles.pickerHandle} />
-            <View style={styles.yearRow}>
-              <TouchableOpacity
-                onPress={() => setPickerYear(p => p - 1)}
-                hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-                <Text style={styles.yearArrow}>{'‹'}</Text>
-              </TouchableOpacity>
-              <Text style={styles.yearText}>{pickerYear}年</Text>
-              <TouchableOpacity
-                onPress={() => setPickerYear(p => p + 1)}
-                hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-                <Text style={styles.yearArrow}>{'›'}</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.monthGrid}>
-              {MONTHS.map(m => {
-                const isSelected = pickerYear === year && m === month;
-                const isCurrentMonth =
-                  pickerYear === new Date().getFullYear() &&
-                  m === new Date().getMonth() + 1;
-                return (
-                  <TouchableOpacity
-                    key={m}
-                    style={[
-                      styles.monthCell,
-                      isSelected && styles.monthCellActive,
-                      isCurrentMonth && !isSelected && styles.monthCellToday,
-                    ]}
-                    onPress={() => selectMonth(m)}
-                    activeOpacity={0.7}>
-                    <Text
-                      style={[
-                        styles.monthCellText,
-                        isSelected && styles.monthCellTextActive,
-                        isCurrentMonth && !isSelected && styles.monthCellTextToday,
-                      ]}>
-                      {m}月
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+        currentYear={year}
+        currentMonth={month}
+        onSelect={handleMonthSelect}
+        onClose={() => setPickerVisible(false)}
+        quickOptions={createQuickOptions()}
+      />
     </SafeAreaView>
   );
 };
@@ -502,32 +454,6 @@ const styles = StyleSheet.create({
   emptyIcon: {fontSize: 48, marginBottom: 12},
   emptyText: {fontSize: 15, color: '#999', marginBottom: 6},
   emptyHint: {fontSize: 12, color: '#ccc'},
-  // Picker modal
-  overlay: {flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center'},
-  pickerCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    paddingTop: 12,
-    paddingBottom: 24,
-    paddingHorizontal: 24,
-    width: SCREEN_W * 0.82,
-    elevation: 12,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 8},
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-  },
-  pickerHandle: {width: 36, height: 4, borderRadius: 2, backgroundColor: '#E0E0E0', alignSelf: 'center', marginBottom: 16},
-  yearRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 20},
-  yearArrow: {fontSize: 26, color: '#3B7DD8', paddingHorizontal: 24, fontWeight: '300'},
-  yearText: {fontSize: 18, fontWeight: '700', color: '#333'},
-  monthGrid: {flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between'},
-  monthCell: {width: '23%', paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginBottom: 10, backgroundColor: '#F7F8FA'},
-  monthCellActive: {backgroundColor: '#3B7DD8'},
-  monthCellToday: {borderWidth: 1.5, borderColor: '#3B7DD8', backgroundColor: '#F0F6FF'},
-  monthCellText: {fontSize: 14, color: '#666', fontWeight: '500'},
-  monthCellTextActive: {color: '#fff', fontWeight: '700'},
-  monthCellTextToday: {color: '#3B7DD8', fontWeight: '600'},
 });
 
 export default DetailScreen;
