@@ -1,9 +1,10 @@
 import React, {useState, useEffect, useCallback} from 'react';
-import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator} from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, AppState} from 'react-native';
 import {NavigationContainer, useNavigation} from '@react-navigation/native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
+import SplashScreen from 'react-native-splash-screen';
 
 import DetailScreen from './src/screens/DetailScreen';
 import ChartScreen from './src/screens/ChartScreen';
@@ -15,6 +16,9 @@ import LoginScreen from './src/screens/LoginScreen';
 import ReceiptScreen from './src/screens/ReceiptScreen';
 import {getToken, removeToken} from './src/services/auth';
 import {registerTokenExpiredCallback} from './src/services/navigationService';
+import {UpdateModal} from './src/components/UpdateModal';
+import {checkForUpdates} from './src/services/versionCheck';
+import type {VersionCheckResponse} from './src/types/version';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -109,6 +113,8 @@ const TabNavigator = () => (
 const App = () => {
   const [token, setToken] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
+  const [versionInfo, setVersionInfo] = useState<VersionCheckResponse | null>(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
 
   useEffect(() => {
     // 注册 Token 过期回调
@@ -120,8 +126,37 @@ const App = () => {
     getToken().then(t => {
       setToken(t);
       setChecking(false);
+
+      // 如果已登录，检查版本更新
+      if (t) {
+        checkForUpdates().then(info => {
+          if (info) {
+            setVersionInfo(info);
+            setShowUpdateModal(true);
+          }
+        });
+      }
+
+      // 隐藏启动页
+      SplashScreen.hide();
     });
   }, []);
+
+  // 从后台恢复时检查更新
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active' && token) {
+        checkForUpdates().then(info => {
+          if (info) {
+            setVersionInfo(info);
+            setShowUpdateModal(true);
+          }
+        });
+      }
+    });
+
+    return () => subscription?.remove();
+  }, [token]);
 
   const handleLoginSuccess = useCallback((t: string) => {
     setToken(t);
@@ -179,6 +214,11 @@ const App = () => {
           />
         </Stack.Navigator>
       </NavigationContainer>
+      <UpdateModal
+        visible={showUpdateModal}
+        versionInfo={versionInfo}
+        onClose={() => setShowUpdateModal(false)}
+      />
     </SafeAreaProvider>
   );
 };

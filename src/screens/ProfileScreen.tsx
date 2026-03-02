@@ -2,6 +2,7 @@ import React from 'react';
 import {View, Text, StyleSheet, TouchableOpacity, StatusBar} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
+import {APP_VERSION} from '../config/version';
 
 const MENU_ITEMS = [
   {icon: '📒', label: '账本管理', route: '账本管理'},
@@ -64,7 +65,7 @@ const ProfileScreen = () => {
           ))}
         </View>
 
-        <Text style={s.version}>LifeHub v1.0.0</Text>
+        <Text style={s.version}>LifeHub v{APP_VERSION}</Text>
       </View>
     </SafeAreaView>
   );

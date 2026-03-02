@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="#3B7DD8">
+
+    <!-- 应用图标 -->
+    <ImageView
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:src="@mipmap/ic_launcher"
+        android:scaleType="centerCrop" />
+
+    <!-- 应用名称 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="LifeHub"
+        android:textColor="#ffffff"
+        android:textSize="32sp"
+        android:fontFamily="sans-serif-medium"
+        android:layout_marginTop="24dp"
+        android:letterSpacing="0.05" />
+
+    <!-- 副标题 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="智能记账 · 轻松生活"
+        android:textColor="#B3D9FF"
+        android:textSize="14sp"
+        android:layout_marginTop="8dp" />
+
+    <!-- 底部版权 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Powered by LifeHub"
+        android:textColor="#80B3FF"
+        android:textSize="12sp"
+        android:layout_marginTop="32dp" />
+
+</LinearLayout>

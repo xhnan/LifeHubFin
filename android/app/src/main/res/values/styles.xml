@@ -6,4 +6,10 @@
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
     </style>
 
+    <!-- Splash Screen theme -->
+    <style name="SplashTheme" parent="AppTheme">
+        <item name="android:windowBackground">@layout/launch_screen</item>
+        <item name="android:statusBarColor">@color/bootsplash_background</item>
+    </style>
+
 </resources>

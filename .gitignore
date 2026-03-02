@@ -75,3 +75,11 @@ yarn-error.log
 !.yarn/versions
 
 start
+
+# Generated upload scripts
+upload-apk.bat
+upload-apk.sh
+
+# Environment config
+.env
+.env.local
