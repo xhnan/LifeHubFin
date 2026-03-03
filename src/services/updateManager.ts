@@ -1,8 +1,6 @@
-import {Platform, NativeModules} from 'react-native';
+import {Platform, Linking, Alert} from 'react-native';
 import RNFS from 'react-native-fs';
 import type {DownloadProgress} from '../types/version';
-
-const {ApkInstaller} = NativeModules;
 
 const DOWNLOAD_DIR = RNFS.CachesDirectoryPath;
 const APK_FILENAME = 'LifeHubFin_update.apk';
@@ -53,7 +51,8 @@ export async function downloadAPK(
  */
 export async function installAPK(filePath: string): Promise<void> {
   try {
-    await ApkInstaller.install(filePath);
+    // 使用 Linking API 打开 APK 文件进行安装
+    await Linking.openURL(`file://${filePath}`);
   } catch (error: any) {
     throw new Error(`安装失败: ${error.message}`);
   }

@@ -1,10 +1,11 @@
-import React, {useState, useEffect, useCallback} from 'react';
-import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, AppState} from 'react-native';
-import {NavigationContainer, useNavigation} from '@react-navigation/native';
-import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import {SafeAreaProvider} from 'react-native-safe-area-context';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, AppState } from 'react-native';
+import { NavigationContainer, useNavigation } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import SplashScreen from 'react-native-splash-screen';
+import AnimatedSplash from './src/components/AnimatedSplash';
 
 import DetailScreen from './src/screens/DetailScreen';
 import ChartScreen from './src/screens/ChartScreen';
@@ -14,16 +15,16 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import BookManageScreen from './src/screens/BookManageScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import ReceiptScreen from './src/screens/ReceiptScreen';
-import {getToken, removeToken} from './src/services/auth';
-import {registerTokenExpiredCallback} from './src/services/navigationService';
-import {UpdateModal} from './src/components/UpdateModal';
-import {checkForUpdates} from './src/services/versionCheck';
-import type {VersionCheckResponse} from './src/types/version';
+import { getToken, removeToken } from './src/services/auth';
+import { registerTokenExpiredCallback } from './src/services/navigationService';
+import { UpdateModal } from './src/components/UpdateModal';
+import { checkForUpdates } from './src/services/versionCheck';
+import type { VersionCheckResponse } from './src/types/version';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-const TabIcon = ({label, focused}: {label: string; focused: boolean}) => {
+const TabIcon = ({ label, focused }: { label: string; focused: boolean }) => {
   const color = focused ? '#3B7DD8' : '#B0B8C4';
   const icons: Record<string, string> = {
     明细: '📋',
@@ -33,8 +34,8 @@ const TabIcon = ({label, focused}: {label: string; focused: boolean}) => {
   };
   return (
     <View style={styles.tabIcon}>
-      <Text style={{fontSize: 22}}>{icons[label]}</Text>
-      <Text style={[styles.tabLabel, {color}]}>{label}</Text>
+      <Text style={{ fontSize: 22 }}>{icons[label]}</Text>
+      <Text style={[styles.tabLabel, { color }]}>{label}</Text>
       {focused && <View style={styles.tabDot} />}
     </View>
   );
@@ -73,14 +74,14 @@ const TabNavigator = () => (
       name="明细"
       component={DetailScreen}
       options={{
-        tabBarIcon: ({focused}) => <TabIcon label="明细" focused={focused} />,
+        tabBarIcon: ({ focused }) => <TabIcon label="明细" focused={focused} />,
       }}
     />
     <Tab.Screen
       name="图表"
       component={ChartScreen}
       options={{
-        tabBarIcon: ({focused}) => <TabIcon label="图表" focused={focused} />,
+        tabBarIcon: ({ focused }) => <TabIcon label="图表" focused={focused} />,
       }}
     />
     <Tab.Screen
@@ -97,14 +98,14 @@ const TabNavigator = () => (
       name="发现"
       component={DiscoverScreen}
       options={{
-        tabBarIcon: ({focused}) => <TabIcon label="发现" focused={focused} />,
+        tabBarIcon: ({ focused }) => <TabIcon label="发现" focused={focused} />,
       }}
     />
     <Tab.Screen
       name="我的"
       component={ProfileScreen}
       options={{
-        tabBarIcon: ({focused}) => <TabIcon label="我的" focused={focused} />,
+        tabBarIcon: ({ focused }) => <TabIcon label="我的" focused={focused} />,
       }}
     />
   </Tab.Navigator>
@@ -115,6 +116,7 @@ const App = () => {
   const [checking, setChecking] = useState(true);
   const [versionInfo, setVersionInfo] = useState<VersionCheckResponse | null>(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
 
   useEffect(() => {
     // 注册 Token 过期回调
@@ -167,6 +169,10 @@ const App = () => {
     setToken(null);
   }, []);
 
+  const handleSplashAnimationEnd = useCallback(() => {
+    setShowAnimatedSplash(false);
+  }, []);
+
   if (checking) {
     return (
       <View style={styles.loadingContainer}>
@@ -179,6 +185,10 @@ const App = () => {
     return (
       <SafeAreaProvider>
         <LoginScreen onLoginSuccess={handleLoginSuccess} />
+        <AnimatedSplash
+          isVisible={showAnimatedSplash}
+          onAnimationEnd={handleSplashAnimationEnd}
+        />
       </SafeAreaProvider>
     );
   }
@@ -186,7 +196,7 @@ const App = () => {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <Stack.Navigator screenOptions={{headerShown: false}}>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="主页" component={TabNavigator} />
           <Stack.Screen
             name="记账"
@@ -219,6 +229,10 @@ const App = () => {
         versionInfo={versionInfo}
         onClose={() => setShowUpdateModal(false)}
       />
+      <AnimatedSplash
+        isVisible={showAnimatedSplash}
+        onAnimationEnd={handleSplashAnimationEnd}
+      />
     </SafeAreaProvider>
   );
 };
@@ -238,7 +252,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
     elevation: 12,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: -4},
+    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.06,
     shadowRadius: 12,
   },
@@ -273,7 +287,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     elevation: 8,
     shadowColor: '#3B7DD8',
-    shadowOffset: {width: 0, height: 4},
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
   },

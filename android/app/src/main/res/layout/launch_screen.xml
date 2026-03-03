@@ -1,45 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:background="#3B7DD8">
+    android:background="@drawable/splash_gradient">
 
-    <!-- 应用图标 -->
+    <!-- 中心光晕效果 -->
     <ImageView
-        android:layout_width="120dp"
-        android:layout_height="120dp"
-        android:src="@mipmap/ic_launcher"
-        android:scaleType="centerCrop" />
+        android:layout_width="400dp"
+        android:layout_height="400dp"
+        android:layout_centerInParent="true"
+        android:src="@drawable/splash_circle_glow"
+        android:alpha="0.5" />
 
-    <!-- 应用名称 -->
-    <TextView
+    <!-- 主要内容区域 -->
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="LifeHub"
-        android:textColor="#ffffff"
-        android:textSize="32sp"
-        android:fontFamily="sans-serif-medium"
-        android:layout_marginTop="24dp"
-        android:letterSpacing="0.05" />
+        android:layout_centerInParent="true"
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
 
-    <!-- 副标题 -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="智能记账 · 轻松生活"
-        android:textColor="#B3D9FF"
-        android:textSize="14sp"
-        android:layout_marginTop="8dp" />
+        <!-- 图标背景光圈 + 图标 -->
+        <FrameLayout
+            android:layout_width="140dp"
+            android:layout_height="140dp"
+            android:layout_gravity="center_horizontal">
+
+            <!-- 半透明白色圆形背景 -->
+            <ImageView
+                android:layout_width="140dp"
+                android:layout_height="140dp"
+                android:layout_gravity="center"
+                android:src="@drawable/splash_icon_bg" />
+
+            <!-- 应用图标 -->
+            <ImageView
+                android:layout_width="88dp"
+                android:layout_height="88dp"
+                android:layout_gravity="center"
+                android:src="@mipmap/ic_launcher"
+                android:scaleType="centerCrop" />
+
+        </FrameLayout>
+
+        <!-- 应用名称 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="LifeHub"
+            android:textColor="#FFFFFF"
+            android:textSize="36sp"
+            android:fontFamily="sans-serif-light"
+            android:layout_marginTop="28dp"
+            android:letterSpacing="0.12" />
+
+        <!-- 副标题 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="智能记账 · 轻松生活"
+            android:textColor="#99FFFFFF"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif"
+            android:layout_marginTop="12dp"
+            android:letterSpacing="0.15" />
+
+    </LinearLayout>
+
+    <!-- 底部装饰线 -->
+    <View
+        android:id="@+id/bottomLine"
+        android:layout_width="40dp"
+        android:layout_height="3dp"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="70dp"
+        android:background="#33FFFFFF" />
 
     <!-- 底部版权 -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="44dp"
         android:text="Powered by LifeHub"
-        android:textColor="#80B3FF"
-        android:textSize="12sp"
-        android:layout_marginTop="32dp" />
+        android:textColor="#44FFFFFF"
+        android:textSize="11sp"
+        android:fontFamily="sans-serif-light"
+        android:letterSpacing="0.08" />
 
-</LinearLayout>
+</RelativeLayout>
