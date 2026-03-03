@@ -1,6 +1,6 @@
 {
   "name": "LifeHubFin",
-  "version": "1.0.22",
+  "version": "1.0.35",
   "private": true,
   "scripts": {
     "android": "react-native run-android",

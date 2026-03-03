@@ -1,8 +1,18 @@
-import React from 'react';
-import {View, Text, StyleSheet, TouchableOpacity, StatusBar} from 'react-native';
+import React, {useState} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  StatusBar,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
 import {APP_VERSION} from '../config/version';
+import {checkForUpdatesManual} from '../services/versionCheck';
+import {UpdateModal} from '../components/UpdateModal';
 
 const MENU_ITEMS = [
   {icon: '📒', label: '账本管理', route: '账本管理'},
@@ -12,6 +22,7 @@ const MENU_ITEMS = [
 ];
 
 const SETTINGS = [
+  {icon: '🔄', label: '检查更新', action: 'checkUpdate'},
   {icon: '🔔', label: '提醒设置'},
   {icon: '🎨', label: '主题外观'},
   {icon: '🔒', label: '安全设置'},
@@ -20,6 +31,37 @@ const SETTINGS = [
 
 const ProfileScreen = () => {
   const navigation = useNavigation<any>();
+  const [checking, setChecking] = useState(false);
+  const [versionInfo, setVersionInfo] = useState<any>(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+
+  const handleCheckUpdate = async () => {
+    console.log('[ProfileScreen] 用户点击检查更新');
+    setChecking(true);
+    const result = await checkForUpdatesManual();
+    setChecking(false);
+
+    console.log('[ProfileScreen] 检查结果:', result);
+
+    if (result.error) {
+      Alert.alert('检查失败', result.error);
+    } else if (result.hasUpdate && result.data) {
+      console.log('[ProfileScreen] 发现新版本:', result.data.versionName);
+      setVersionInfo(result.data);
+      setShowUpdateModal(true);
+    } else {
+      console.log('[ProfileScreen] 当前已是最新版本');
+      Alert.alert('已是最新版本', `当前版本 v${APP_VERSION} 已是最新版本`);
+    }
+  };
+
+  const handleMenuPress = (item: any) => {
+    if (item.action === 'checkUpdate') {
+      handleCheckUpdate();
+    } else if (item.route) {
+      navigation.navigate(item.route);
+    }
+  };
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -56,10 +98,18 @@ const ProfileScreen = () => {
           {SETTINGS.map((item, i) => (
             <React.Fragment key={item.label}>
               {i > 0 && <View style={s.divider} />}
-              <TouchableOpacity style={s.menuRow} activeOpacity={0.6}>
+              <TouchableOpacity
+                style={s.menuRow}
+                onPress={() => handleMenuPress(item)}
+                activeOpacity={0.6}
+                disabled={checking && item.action === 'checkUpdate'}>
                 <Text style={s.menuIcon}>{item.icon}</Text>
                 <Text style={s.menuLabel}>{item.label}</Text>
-                <Text style={s.menuArrow}>›</Text>
+                {checking && item.action === 'checkUpdate' ? (
+                  <ActivityIndicator size="small" color="#3B7DD8" />
+                ) : (
+                  <Text style={s.menuArrow}>›</Text>
+                )}
               </TouchableOpacity>
             </React.Fragment>
           ))}
@@ -67,6 +117,12 @@ const ProfileScreen = () => {
 
         <Text style={s.version}>LifeHub v{APP_VERSION}</Text>
       </View>
+
+      <UpdateModal
+        visible={showUpdateModal}
+        versionInfo={versionInfo}
+        onClose={() => setShowUpdateModal(false)}
+      />
     </SafeAreaView>
   );
 };

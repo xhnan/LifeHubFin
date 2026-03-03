@@ -82,8 +82,8 @@ android {
         applicationId "com.lifehubfin"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 10022
-        versionName "1.0.22"
+        versionCode 10035
+        versionName "1.0.35"
     }
     signingConfigs {
         debug {

@@ -1,6 +1,8 @@
-import {Platform, Linking, Alert} from 'react-native';
+import {Platform, NativeModules} from 'react-native';
 import RNFS from 'react-native-fs';
 import type {DownloadProgress} from '../types/version';
+
+const {ApkInstaller} = NativeModules;
 
 const DOWNLOAD_DIR = RNFS.CachesDirectoryPath;
 const APK_FILENAME = 'LifeHubFin_update.apk';
@@ -50,10 +52,14 @@ export async function downloadAPK(
  * 安装 APK
  */
 export async function installAPK(filePath: string): Promise<void> {
+  if (Platform.OS !== 'android') {
+    throw new Error('仅支持 Android 平台');
+  }
+
   try {
-    // 使用 Linking API 打开 APK 文件进行安装
-    await Linking.openURL(`file://${filePath}`);
+    // 使用原生模块安装 APK（支持 FileProvider）
+    await ApkInstaller.install(filePath);
   } catch (error: any) {
-    throw new Error(`安装失败: ${error.message}`);
+    throw new Error(`安装失败: ${error.message || error}`);
   }
 }

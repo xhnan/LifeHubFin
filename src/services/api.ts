@@ -1,7 +1,8 @@
 import {getToken} from './auth';
 import {handleTokenExpired} from './navigationService';
+import {API_BASE_URL} from '../config/api';
 
-export const BASE_URL = 'http://10.0.2.2:9000';
+export const BASE_URL = API_BASE_URL;
 
 export interface ResponseResult<T> {
   code: number;
