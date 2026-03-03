@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 开发环境：允许所有明文流量 -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- 生产环境：只允许特定域名使用明文流量 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- 如果 APK 下载域名是 HTTP，添加到这里 -->
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">api.xhnya.top</domain>
+    </domain-config>
+</network-security-config>
