@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback} from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,11 +13,11 @@ import {
   TextInput,
   Platform,
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {launchCamera, launchImageLibrary, ImagePickerResponse, Asset} from 'react-native-image-picker';
-import {getMyBooks, Book} from '../services/book';
-import {getAccounts, Account} from '../services/account';
-import {createTransaction, EntryRequest} from '../services/transaction';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { launchCamera, launchImageLibrary, ImagePickerResponse, Asset } from 'react-native-image-picker';
+import { Account } from '../services/account';
+import { useFinanceStore } from '../store/FinanceStore';
+import { createTransaction, EntryRequest } from '../services/transaction';
 import IconifyIcon from '../components/IconifyIcon';
 import DateTimePickerComponent from '../components/DateTimePicker';
 import NativeImageHandler from '../services/nativeImageHandler';
@@ -31,8 +31,9 @@ const ACCOUNT_TYPE_LABEL: Record<string, string> = {
   EXPENSE: '支出', INCOME: '收入', ASSET: '资产', LIABILITY: '负债', EQUITY: '权益',
 };
 
-const ReceiptScreen = ({route, navigation}: any) => {
+const ReceiptScreen = ({ route, navigation }: any) => {
   const initialImageUri = route.params?.initialImageUri as string | undefined;
+  const store = useFinanceStore();
 
   const [imageUri, setImageUri] = useState<string | null>(initialImageUri || null);
   const [amount, setAmount] = useState('');
@@ -43,34 +44,17 @@ const ReceiptScreen = ({route, navigation}: any) => {
     return `${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())} ${pad(n.getHours())}:${pad(n.getMinutes())}`;
   });
 
-  const [books, setBooks] = useState<Book[]>([]);
-  const [selectedBookId, setSelectedBookId] = useState<number | null>(null);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [loading, setLoading] = useState(true);
+  // 从全局 store 读取缓存数据
+  const books = store.books;
+  const selectedBookId = store.selectedBookId;
+  const accounts = store.accounts;
+  const loading = store.initializing;
   const [submitting, setSubmitting] = useState(false);
 
   const [payAccountId, setPayAccountId] = useState<number | string | null>(null);
 
   const [pickerVisible, setPickerVisible] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
-
-  useEffect(() => {
-    getMyBooks()
-      .then(d => {
-        setBooks(d);
-        if (d.length > 0) setSelectedBookId(d[0].id);
-      })
-      .catch(() => Alert.alert('错误', '加载账本失败'))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    if (selectedBookId) {
-      getAccounts(selectedBookId)
-        .then(a => setAccounts(Array.isArray(a) ? a : []))
-        .catch(() => setAccounts([]));
-    }
-  }, [selectedBookId]);
 
   // Clear shared image after component unmounts (if it came from share sheet)
   useEffect(() => {
@@ -97,7 +81,7 @@ const ReceiptScreen = ({route, navigation}: any) => {
     !id ? '' : accounts.find(a => String(a.id) === String(id))?.name || '';
 
   const handlePickImage = (type: 'camera' | 'gallery') => {
-    const options = {mediaType: 'photo' as const, quality: 0.8 as const, maxWidth: 1200, maxHeight: 1200};
+    const options = { mediaType: 'photo' as const, quality: 0.8 as const, maxWidth: 1200, maxHeight: 1200 };
     const cb = (res: ImagePickerResponse) => {
       if (res.didCancel || res.errorCode) return;
       const uri = res.assets?.[0]?.uri;
@@ -124,7 +108,7 @@ const ReceiptScreen = ({route, navigation}: any) => {
 
     const s = amt.toFixed(2);
     const entries: EntryRequest[] = [
-      {accountId: payAccountId, direction: 'CREDIT', amount: s},
+      { accountId: payAccountId, direction: 'CREDIT', amount: s },
     ];
     const desc = description.trim() || getName(payAccountId);
     const dp = transDate.replace(' ', 'T').split(/[-T:]/);
@@ -139,10 +123,8 @@ const ReceiptScreen = ({route, navigation}: any) => {
         bookId: selectedBookId,
         entries,
       });
-      Alert.alert('✅ 记账成功', desc, [
-        {text: '继续', onPress: resetForm},
-        {text: '返回', onPress: () => navigation.goBack()},
-      ]);
+      // 记账成功，直接返回明细页面（DetailScreen 会自动刷新数据）
+      navigation.goBack();
     } catch (err: any) {
       Alert.alert('记账失败', err.message || '请稍后重试');
     } finally {
@@ -174,11 +156,11 @@ const ReceiptScreen = ({route, navigation}: any) => {
 
       {/* 顶栏 */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
+        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Text style={s.backBtn}>‹</Text>
         </TouchableOpacity>
         <Text style={s.headerTitle}>拍照记账</Text>
-        <View style={{width: 32}} />
+        <View style={{ width: 32 }} />
       </View>
 
       <ScrollView style={s.body} contentContainerStyle={s.bodyPad} keyboardShouldPersistTaps="handled">
@@ -186,7 +168,7 @@ const ReceiptScreen = ({route, navigation}: any) => {
         <View style={s.imageCard}>
           {imageUri ? (
             <TouchableOpacity onPress={() => setImageUri(null)} activeOpacity={0.8}>
-              <Image source={{uri: imageUri}} style={s.preview} resizeMode="cover" />
+              <Image source={{ uri: imageUri }} style={s.preview} resizeMode="cover" />
               <View style={s.removeHint}>
                 <Text style={s.removeHintText}>点击移除</Text>
               </View>
@@ -261,7 +243,7 @@ const ReceiptScreen = ({route, navigation}: any) => {
 
         {/* 提交 */}
         <TouchableOpacity
-          style={[s.submit, submitting && {opacity: 0.6}]}
+          style={[s.submit, submitting && { opacity: 0.6 }]}
           onPress={handleSubmit}
           disabled={submitting}
           activeOpacity={0.7}>
@@ -271,7 +253,7 @@ const ReceiptScreen = ({route, navigation}: any) => {
             <Text style={s.submitText}>💾  保存记录</Text>
           )}
         </TouchableOpacity>
-        <View style={{height: 40}} />
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       {/* 科目选择弹窗 */}
@@ -280,14 +262,14 @@ const ReceiptScreen = ({route, navigation}: any) => {
           <View style={s.sheet} onStartShouldSetResponder={() => true}>
             <View style={s.handle} />
             <Text style={s.sheetTitle}>选择付款账户</Text>
-            <ScrollView style={{paddingHorizontal: 20}} showsVerticalScrollIndicator={false}>
+            <ScrollView style={{ paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
               {Object.entries(
                 pickerAccounts.reduce<Record<string, Account[]>>((g, a) => {
                   (g[a.accountType] ||= []).push(a);
                   return g;
                 }, {}),
               ).map(([type, accs]) => (
-                <View key={type} style={{marginBottom: 20}}>
+                <View key={type} style={{ marginBottom: 20 }}>
                   <Text style={s.groupTitle}>{ACCOUNT_TYPE_LABEL[type] || type}</Text>
                   <View style={s.chipGrid}>
                     {accs.map((a, i) => (
@@ -305,7 +287,7 @@ const ReceiptScreen = ({route, navigation}: any) => {
               {pickerAccounts.length === 0 && (
                 <Text style={s.empty}>暂无可选科目</Text>
               )}
-              <View style={{height: 24}} />
+              <View style={{ height: 24 }} />
             </ScrollView>
           </View>
         </TouchableOpacity>
@@ -326,46 +308,46 @@ const ReceiptScreen = ({route, navigation}: any) => {
 };
 
 const s = StyleSheet.create({
-  safe: {flex: 1, backgroundColor: '#3B7DD8'},
-  center: {flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F2F4F7'},
-  header: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#3B7DD8'},
-  backBtn: {fontSize: 32, color: '#fff', lineHeight: 34},
-  headerTitle: {fontSize: 17, fontWeight: '700', color: '#fff'},
-  body: {flex: 1, backgroundColor: '#F2F4F7', borderTopLeftRadius: 20, borderTopRightRadius: 20},
-  bodyPad: {padding: 16},
+  safe: { flex: 1, backgroundColor: '#3B7DD8' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F2F4F7' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#3B7DD8' },
+  backBtn: { fontSize: 32, color: '#fff', lineHeight: 34 },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: '#fff' },
+  body: { flex: 1, backgroundColor: '#F2F4F7', borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+  bodyPad: { padding: 16 },
 
-  imageCard: {backgroundColor: '#fff', borderRadius: 14, marginBottom: 10, overflow: 'hidden', elevation: 1, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.04, shadowRadius: 3},
-  imagePlaceholder: {paddingVertical: 40, alignItems: 'center'},
-  imageActions: {flexDirection: 'row', alignItems: 'center'},
-  imageBtn: {alignItems: 'center', paddingHorizontal: 30, paddingVertical: 10},
-  imageBtnText: {fontSize: 13, color: '#666', marginTop: 8, fontWeight: '500'},
-  imageDivider: {width: 1, height: 50, backgroundColor: '#E8ECF1'},
-  preview: {width: '100%', height: 220, borderRadius: 14},
-  removeHint: {position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.45)', paddingVertical: 8, alignItems: 'center', borderBottomLeftRadius: 14, borderBottomRightRadius: 14},
-  removeHintText: {color: '#fff', fontSize: 12, fontWeight: '500'},
+  imageCard: { backgroundColor: '#fff', borderRadius: 14, marginBottom: 10, overflow: 'hidden', elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
+  imagePlaceholder: { paddingVertical: 40, alignItems: 'center' },
+  imageActions: { flexDirection: 'row', alignItems: 'center' },
+  imageBtn: { alignItems: 'center', paddingHorizontal: 30, paddingVertical: 10 },
+  imageBtnText: { fontSize: 13, color: '#666', marginTop: 8, fontWeight: '500' },
+  imageDivider: { width: 1, height: 50, backgroundColor: '#E8ECF1' },
+  preview: { width: '100%', height: 220, borderRadius: 14 },
+  removeHint: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.45)', paddingVertical: 8, alignItems: 'center', borderBottomLeftRadius: 14, borderBottomRightRadius: 14 },
+  removeHintText: { color: '#fff', fontSize: 12, fontWeight: '500' },
 
-  card: {backgroundColor: '#fff', borderRadius: 14, marginBottom: 10, overflow: 'hidden', elevation: 1, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.04, shadowRadius: 3},
-  divider: {height: StyleSheet.hairlineWidth, backgroundColor: '#F0F2F5', marginLeft: 56},
-  row: {flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 14},
-  rowEmoji: {fontSize: 16, marginRight: 10},
-  rowLabel: {fontSize: 14, fontWeight: '500', color: '#666', width: 64},
-  rowValue: {flex: 1, fontSize: 14, color: '#1A1A2E', textAlign: 'right'},
-  rowPlaceholder: {color: '#C8CDD5'},
-  rowArrow: {fontSize: 16, color: '#D0D5DD', marginLeft: 4},
-  rowInput: {flex: 1, fontSize: 14, color: '#1A1A2E', textAlign: 'right', padding: 0},
+  card: { backgroundColor: '#fff', borderRadius: 14, marginBottom: 10, overflow: 'hidden', elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: '#F0F2F5', marginLeft: 56 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 14 },
+  rowEmoji: { fontSize: 16, marginRight: 10 },
+  rowLabel: { fontSize: 14, fontWeight: '500', color: '#666', width: 64 },
+  rowValue: { flex: 1, fontSize: 14, color: '#1A1A2E', textAlign: 'right' },
+  rowPlaceholder: { color: '#C8CDD5' },
+  rowArrow: { fontSize: 16, color: '#D0D5DD', marginLeft: 4 },
+  rowInput: { flex: 1, fontSize: 14, color: '#1A1A2E', textAlign: 'right', padding: 0 },
 
-  submit: {backgroundColor: '#3B7DD8', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 4, elevation: 4, shadowColor: '#3B7DD8', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.25, shadowRadius: 8},
-  submitText: {fontSize: 16, fontWeight: '700', color: '#fff'},
+  submit: { backgroundColor: '#3B7DD8', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 4, elevation: 4, shadowColor: '#3B7DD8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8 },
+  submitText: { fontSize: 16, fontWeight: '700', color: '#fff' },
 
-  overlay: {flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end'},
-  sheet: {backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%', paddingTop: 12},
-  handle: {width: 36, height: 4, borderRadius: 2, backgroundColor: '#E0E0E0', alignSelf: 'center', marginBottom: 16},
-  sheetTitle: {fontSize: 16, fontWeight: '700', color: '#333', textAlign: 'center', marginBottom: 16},
-  groupTitle: {fontSize: 12, fontWeight: '700', color: '#999', marginBottom: 10, letterSpacing: 0.5},
-  chipGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: 8},
-  chip: {paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: '#F5F6F8'},
-  chipText: {fontSize: 14, color: '#333', fontWeight: '500'},
-  empty: {fontSize: 14, color: '#C8CDD5', textAlign: 'center', paddingVertical: 40},
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%', paddingTop: 12 },
+  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#E0E0E0', alignSelf: 'center', marginBottom: 16 },
+  sheetTitle: { fontSize: 16, fontWeight: '700', color: '#333', textAlign: 'center', marginBottom: 16 },
+  groupTitle: { fontSize: 12, fontWeight: '700', color: '#999', marginBottom: 10, letterSpacing: 0.5 },
+  chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: '#F5F6F8' },
+  chipText: { fontSize: 14, color: '#333', fontWeight: '500' },
+  empty: { fontSize: 14, color: '#C8CDD5', textAlign: 'center', paddingVertical: 40 },
 });
 
 export default ReceiptScreen;

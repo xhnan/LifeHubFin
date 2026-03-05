@@ -1,5 +1,5 @@
-import {createNavigationContainerRef} from '@react-navigation/native';
-import {removeToken} from './auth';
+import { createNavigationContainerRef } from '@react-navigation/native';
+import { removeToken } from './auth';
 
 export const navigationRef = createNavigationContainerRef();
 
@@ -22,5 +22,35 @@ export async function handleTokenExpired() {
   // 调用回调函数，通知 App 组件更新状态
   if (tokenExpiredCallback) {
     tokenExpiredCallback();
+  }
+}
+
+/**
+ * 导航辅助函数
+ */
+export function navigate(name: string, params?: any) {
+  if (navigationRef.isReady()) {
+    (navigationRef as any).navigate(name, params);
+  }
+}
+
+/**
+ * 重置导航到指定页面
+ */
+export function reset(name: string, params?: any) {
+  if (navigationRef.isReady()) {
+    navigationRef.resetRoot({
+      index: 0,
+      routes: [{ name, params }],
+    } as never);
+  }
+}
+
+/**
+ * 返回上一页
+ */
+export function goBack() {
+  if (navigationRef.isReady() && navigationRef.canGoBack()) {
+    navigationRef.goBack();
   }
 }

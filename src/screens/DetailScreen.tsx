@@ -12,7 +12,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {useNavigation} from '@react-navigation/native';
+import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import {
   getTransactionDetails,
   DailyGroup,
@@ -104,6 +104,16 @@ const DetailScreen = () => {
     fetchDetails().finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookId, currentDate]);
+
+  // 当页面获得焦点时刷新数据（例如从记账页面返回）
+  useFocusEffect(
+    useCallback(() => {
+      if (bookId) {
+        fetchDetails();
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [bookId])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);

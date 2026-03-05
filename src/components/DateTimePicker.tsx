@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -26,18 +26,32 @@ const DateTimePickerComponent: React.FC<DateTimePickerProps> = ({
   // 解析传入的日期字符串
   const parseDateTime = (str: string): Date => {
     const parts = str.replace(' ', 'T').split(/[-T:]/);
-    const [year, month, day, hour = 0, minute = 0] = parts.map(Number);
+    const nums = parts.map(Number);
+    const year = nums[0] || new Date().getFullYear();
+    const month = nums[1] || 1;
+    const day = nums[2] || 1;
+    const hour = nums[3] ?? 0;
+    const minute = nums[4] ?? 0;
     return new Date(year, month - 1, day, hour, minute);
   };
 
-  const [selectedDate, setSelectedDate] = useState<Date>(() => parseDateTime(value));
+  const [selectedDate, setSelectedDate] = useState<Date>(() =>
+    parseDateTime(value),
+  );
   const [mode, setMode] = useState<'date' | 'time'>('date');
   const [showPicker, setShowPicker] = useState(false);
+
+  // 当外部 value 变化时，同步到内部状态
+  useEffect(() => {
+    setSelectedDate(parseDateTime(value));
+  }, [value]);
 
   // 格式化日期时间为字符串
   const formatDateTime = (date: Date): string => {
     const pad = (v: number) => String(v).padStart(2, '0');
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+      date.getDate(),
+    )} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
   };
 
   // 格式化日期显示
@@ -76,7 +90,7 @@ const DateTimePickerComponent: React.FC<DateTimePickerProps> = ({
     onConfirm(formatDateTime(selectedDate));
   };
 
-  const handleDateChange = (event: any, date?: Date) => {
+  const handleDateChange = (_event: any, date?: Date) => {
     if (Platform.OS === 'android') {
       setShowPicker(false);
     }
@@ -96,18 +110,22 @@ const DateTimePickerComponent: React.FC<DateTimePickerProps> = ({
   };
 
   const quickDates = [
-    {label: '今天', offset: 0},
-    {label: '昨天', offset: -1},
-    {label: '前天', offset: -2},
-    {label: '明天', offset: 1},
+    { label: '今天', offset: 0 },
+    { label: '昨天', offset: -1 },
+    { label: '前天', offset: -2 },
+    { label: '明天', offset: 1 },
   ];
 
   const quickTimes = [
-    {label: '现在', hour: new Date().getHours(), minute: new Date().getMinutes()},
-    {label: '早上', hour: 9, minute: 0},
-    {label: '中午', hour: 12, minute: 0},
-    {label: '下午', hour: 15, minute: 0},
-    {label: '晚上', hour: 18, minute: 0},
+    {
+      label: '现在',
+      hour: new Date().getHours(),
+      minute: new Date().getMinutes(),
+    },
+    { label: '早上', hour: 9, minute: 0 },
+    { label: '中午', hour: 12, minute: 0 },
+    { label: '下午', hour: 15, minute: 0 },
+    { label: '晚上', hour: 18, minute: 0 },
   ];
 
   return (
@@ -115,7 +133,8 @@ const DateTimePickerComponent: React.FC<DateTimePickerProps> = ({
       visible={visible}
       transparent
       animationType="slide"
-      onRequestClose={onCancel}>
+      onRequestClose={onCancel}
+    >
       <View style={s.overlay}>
         <View style={s.container}>
           {/* 顶部标题栏 */}
@@ -134,12 +153,13 @@ const DateTimePickerComponent: React.FC<DateTimePickerProps> = ({
             <View style={s.section}>
               <Text style={s.sectionTitle}>快捷日期</Text>
               <View style={s.quickRow}>
-                {quickDates.map((item) => (
+                {quickDates.map(item => (
                   <TouchableOpacity
                     key={item.label}
                     style={s.quickBtn}
                     onPress={() => setQuickDate(item.offset)}
-                    activeOpacity={0.7}>
+                    activeOpacity={0.7}
+                  >
                     <Text style={s.quickBtnText}>{item.label}</Text>
                   </TouchableOpacity>
                 ))}
@@ -152,11 +172,14 @@ const DateTimePickerComponent: React.FC<DateTimePickerProps> = ({
               <TouchableOpacity
                 style={s.displayBox}
                 onPress={openDatePicker}
-                activeOpacity={0.7}>
+                activeOpacity={0.7}
+              >
                 <Text style={s.displayIcon}>📅</Text>
                 <View style={s.displayContent}>
                   <Text style={s.displayLabel}>日期</Text>
-                  <Text style={s.displayValue}>{formatDateDisplay(selectedDate)}</Text>
+                  <Text style={s.displayValue}>
+                    {formatDateDisplay(selectedDate)}
+                  </Text>
                 </View>
                 <Text style={s.displayArrow}>›</Text>
               </TouchableOpacity>
@@ -166,12 +189,13 @@ const DateTimePickerComponent: React.FC<DateTimePickerProps> = ({
             <View style={s.section}>
               <Text style={s.sectionTitle}>快捷时间</Text>
               <View style={s.quickRow}>
-                {quickTimes.map((item) => (
+                {quickTimes.map(item => (
                   <TouchableOpacity
                     key={item.label}
                     style={[s.quickBtn, s.quickBtnSmall]}
                     onPress={() => setQuickTime(item.hour, item.minute)}
-                    activeOpacity={0.7}>
+                    activeOpacity={0.7}
+                  >
                     <Text style={s.quickBtnText}>{item.label}</Text>
                   </TouchableOpacity>
                 ))}
@@ -184,11 +208,14 @@ const DateTimePickerComponent: React.FC<DateTimePickerProps> = ({
               <TouchableOpacity
                 style={s.displayBox}
                 onPress={openTimePicker}
-                activeOpacity={0.7}>
+                activeOpacity={0.7}
+              >
                 <Text style={s.displayIcon}>🕐</Text>
                 <View style={s.displayContent}>
                   <Text style={s.displayLabel}>时间</Text>
-                  <Text style={s.displayValue}>{formatTimeDisplay(selectedDate)}</Text>
+                  <Text style={s.displayValue}>
+                    {formatTimeDisplay(selectedDate)}
+                  </Text>
                 </View>
                 <Text style={s.displayArrow}>›</Text>
               </TouchableOpacity>
@@ -215,7 +242,8 @@ const DateTimePickerComponent: React.FC<DateTimePickerProps> = ({
                   />
                   <TouchableOpacity
                     style={s.pickerDoneBtn}
-                    onPress={() => setShowPicker(false)}>
+                    onPress={() => setShowPicker(false)}
+                  >
                     <Text style={s.pickerDoneText}>完成</Text>
                   </TouchableOpacity>
                 </View>

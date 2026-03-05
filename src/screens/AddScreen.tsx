@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,19 +10,18 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
-  KeyboardAvoidingView,
   Platform,
+
+  KeyboardAvoidingView,
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {getMyBooks, Book} from '../services/book';
-import {getAccounts, Account} from '../services/account';
-import {getTags, Tag} from '../services/tag';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Account } from '../services/account';
+import { useFinanceStore } from '../store/FinanceStore';
 import IconifyIcon from '../components/IconifyIcon';
 import DateTimePickerComponent from '../components/DateTimePicker';
 import {
   createTransaction,
   EntryRequest,
-  CreateTransactionRequest,
 } from '../services/transaction';
 
 type QuickMode = 'expense' | 'income' | 'transfer' | 'advanced';
@@ -39,33 +38,127 @@ interface EntryRow {
 let entryKeySeq = 0;
 const nextKey = () => `e_${++entryKeySeq}`;
 
-const MODE_ACCENT: Record<QuickMode, string> = {
-  expense: '#FF6B6B',
-  income: '#51CF66',
-  transfer: '#339AF0',
-  advanced: '#845EF7',
-};
-
 const ACCOUNT_TYPE_LABEL: Record<string, string> = {
   EXPENSE: '支出', INCOME: '收入', ASSET: '资产', LIABILITY: '负债', EQUITY: '权益',
 };
 
-const AddScreen = ({navigation}: any) => {
+const THEME = '#3B7DD8';
+
+// 默认通用图标 — 数据库中大量科目都使用了这个
+const DEFAULT_ICON = 'material-symbols-light:account-balance-wallet-outline-rounded';
+
+// 根据科目名称匹配更合适的图标（仅当科目使用默认图标时生效）
+const NAME_ICON_MAP: Record<string, string> = {
+  // ── 餐饮 ──
+  '餐饮': 'material-symbols-light:restaurant-rounded',
+  '买菜生鲜': 'material-symbols-light:storefront-rounded',
+  '一日三餐': 'material-symbols-light:restaurant-rounded',
+  '零食饮料': 'material-symbols-light:local-cafe-rounded',
+  // ── 交通 ──
+  '日常交通': 'material-symbols-light:commute-rounded',
+  '公共交通': 'material-symbols-light:directions-bus-rounded',
+  '打车': 'material-symbols-light:local-taxi-rounded',
+  '交通': 'material-symbols-light:flight-rounded',
+  '车辆日常': 'material-symbols-light:directions-car-rounded',
+  '车辆养护': 'material-symbols-light:car-repair-rounded',
+  // ── 居住 ──
+  '居住': 'material-symbols-light:home-rounded',
+  '房租': 'material-symbols-light:home-rounded',
+  '水电网': 'material-symbols-light:bolt-rounded',
+  // ── 购物 ──
+  '购物': 'material-symbols-light:local-mall-rounded',
+  '数码电子': 'material-symbols-light:devices-rounded',
+  '服饰': 'material-symbols-light:checkroom-rounded',
+  '日用百货': 'material-symbols-light:shopping-cart-rounded',
+  // ── 服务 ──
+  '服务与订阅': 'material-symbols-light:subscriptions-rounded',
+  '软件订阅': 'material-symbols-light:subscriptions-rounded',
+  '手机话费': 'material-symbols-light:phone-android-rounded',
+  // ── 医疗 ──
+  '医疗': 'material-symbols-light:medical-services-outline-rounded',
+  '看病': 'material-symbols-light:local-hospital-rounded',
+  '药品': 'material-symbols-light:medication-rounded',
+  // ── 学习 ──
+  '个人提升': 'material-symbols-light:school-rounded',
+  '书籍/课程': 'material-symbols-light:menu-book-rounded',
+  // ── 差旅 ──
+  '差旅与度假': 'material-symbols-light:luggage-rounded',
+  '酒店住宿': 'material-symbols-light:hotel-rounded',
+  '景点玩乐': 'material-symbols-light:attractions-rounded',
+  '度假消费': 'material-symbols-light:beach-access-rounded',
+  // ── 情感社交 ──
+  '情感与社交': 'material-symbols-light:favorite-rounded',
+  '伴侣投入': 'material-symbols-light:favorite-rounded',
+  '孝敬长辈': 'material-symbols-light:elderly-rounded',
+  '朋友人情': 'material-symbols-light:people-rounded',
+  // ── 折旧 ──
+  '折旧与摊销': 'material-symbols-light:trending-down-rounded',
+  '汽车折旧': 'material-symbols-light:car-crash-rounded',
+  // ── 收入 ──
+  '收入': 'material-symbols-light:savings-rounded',
+  '主动收入': 'material-symbols-light:work-rounded',
+  '工资': 'material-symbols-light:payments-rounded',
+  '奖金': 'material-symbols-light:emoji-events-rounded',
+  '被动收入': 'material-symbols-light:trending-up-rounded',
+  '利息': 'material-symbols-light:percent-rounded',
+  '股息': 'material-symbols-light:show-chart-rounded',
+  '二手交易': 'material-symbols-light:swap-horiz-rounded',
+  // ── 资产 ──
+  '资产': 'material-symbols-light:account-balance-rounded',
+  '流动资产': 'material-symbols-light:payments-rounded',
+  '现金': 'material-symbols-light:money-rounded',
+  '支付宝': 'material-symbols-light:payments',
+  '微信': 'material-symbols-light:chat-rounded',
+  '投资资产': 'material-symbols-light:trending-up-rounded',
+  '应收账款': 'material-symbols-light:receipt-long-rounded',
+  '公司报销款': 'material-symbols-light:receipt-long-rounded',
+  '借出款项': 'material-symbols-light:currency-exchange-rounded',
+  '固定资产': 'material-symbols-light:domain-rounded',
+  '汽车': 'material-symbols-light:directions-car-rounded',
+  '受限资产': 'material-symbols-light:lock',
+  '公积金': 'material-symbols-light:account-balance-rounded',
+  // ── 负债 ──
+  '负债': 'material-symbols-light:credit-card',
+  '流动负债': 'material-symbols-light:credit-card',
+  '花呗': 'material-symbols-light:credit-card',
+  '长期负债': 'material-symbols-light:request-quote-rounded',
+  '车贷': 'material-symbols-light:directions-car-rounded',
+  '房贷': 'material-symbols-light:home-rounded',
+  // ── 权益 ──
+  '权益': 'material-symbols-light:balance-rounded',
+  '期初权益': 'material-symbols-light:balance-rounded',
+  '余额调整': 'material-symbols-light:tune-rounded',
+  // ── 支出大类 ──
+  '支出': 'material-symbols-light:local-mall-rounded',
+};
+
+/** 如果科目使用默认图标，根据名称匹配更合适的图标 */
+const getSmartIcon = (icon: string | undefined | null, name: string): string => {
+  const trimName = (name || '').trim();
+  if (!icon || icon === DEFAULT_ICON) {
+    return NAME_ICON_MAP[trimName] || DEFAULT_ICON;
+  }
+  return icon;
+};
+
+const AddScreen = ({ navigation }: any) => {
+  const insets = useSafeAreaInsets();
+  const store = useFinanceStore();
   const [mode, setMode] = useState<QuickMode>('expense');
   const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
+  const [amountStr, setAmountStr] = useState('');
   const [transDate, setTransDate] = useState(() => {
     const n = new Date();
     const pad = (v: number) => String(v).padStart(2, '0');
     return `${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())} ${pad(n.getHours())}:${pad(n.getMinutes())}`;
   });
 
-  const [books, setBooks] = useState<Book[]>([]);
-  const [selectedBookId, setSelectedBookId] = useState<number | null>(null);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
+  // 从全局 store 读取缓存数据
+  const books = store.books;
+  const selectedBookId = store.selectedBookId;
+  const accounts = store.accounts;
+  const tags = store.tags;
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const [expenseAccountId, setExpenseAccountId] = useState<number | string | null>(null);
@@ -76,8 +169,8 @@ const AddScreen = ({navigation}: any) => {
   const [toAccountId, setToAccountId] = useState<number | string | null>(null);
 
   const [entries, setEntries] = useState<EntryRow[]>([
-    {key: nextKey(), accountId: null, accountName: '', direction: 'DEBIT', amount: '', memo: ''},
-    {key: nextKey(), accountId: null, accountName: '', direction: 'CREDIT', amount: '', memo: ''},
+    { key: nextKey(), accountId: null, accountName: '', direction: 'DEBIT', amount: '', memo: '' },
+    { key: nextKey(), accountId: null, accountName: '', direction: 'CREDIT', amount: '', memo: '' },
   ]);
 
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -86,83 +179,103 @@ const AddScreen = ({navigation}: any) => {
   const [bookPickerVisible, setBookPickerVisible] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
 
-  const accent = MODE_ACCENT[mode];
-
-  useEffect(() => { loadBooks(); }, []);
-  useEffect(() => { if (selectedBookId) loadData(selectedBookId); }, [selectedBookId]);
-
-  const loadBooks = async () => {
-    try {
-      const d = await getMyBooks();
-      setBooks(d);
-      if (d.length > 0) setSelectedBookId(d[0].id);
-    } catch { Alert.alert('错误', '加载账本失败'); }
-    finally { setLoading(false); }
+  // 切换账本时使用 store 的 switchBook 方法
+  const handleSwitchBook = async (bookId: number) => {
+    await store.switchBook(bookId);
   };
 
-  const loadData = async (bid: number) => {
+  const getEvaluatedAmount = () => {
     try {
-      const [a, t] = await Promise.all([getAccounts(bid).catch(() => []), getTags(bid).catch(() => [])]);
-      setAccounts(Array.isArray(a) ? a : []);
-      setTags(Array.isArray(t) ? t : []);
-    } catch {}
+      const str = (amountStr || '0').replace(/[^\d\.\+\-]/g, '');
+      const match = str.match(/([\+\-]?)([0-9\.]+)/g);
+      if (!match) return 0;
+      return match.reduce((sum, part) => sum + parseFloat(part || '0'), 0);
+    } catch { return 0; }
   };
+
+  const allLeafAccounts = useMemo(() => {
+    const pids = new Set(accounts.map(a => String(a.parentId)).filter(s => s && s !== 'null'));
+    const list = accounts.filter(a => !pids.has(String(a.id)));
+    const seen = new Set<string>();
+    return list.filter(a => { const k = String(a.id); if (seen.has(k)) return false; seen.add(k); return true; });
+  }, [accounts]);
+
+  const pickerLeafAccounts = useMemo(() => {
+    return pickerFilter.length > 0
+      ? allLeafAccounts.filter(a => pickerFilter.includes(a.accountType))
+      : allLeafAccounts;
+  }, [allLeafAccounts, pickerFilter]);
+
+  useEffect(() => {
+    if (leafAccountsByType('EXPENSE').length > 0 && !expenseAccountId) setExpenseAccountId(leafAccountsByType('EXPENSE')[0].id);
+    if (leafAccountsByType('INCOME').length > 0 && !incomeAccountId) setIncomeAccountId(leafAccountsByType('INCOME')[0].id);
+    const assetLiabs = allLeafAccounts.filter(a => ['ASSET', 'LIABILITY'].includes(a.accountType));
+    if (assetLiabs.length > 0) {
+      if (!payAccountId) setPayAccountId(assetLiabs[0].id);
+      if (!depositAccountId) setDepositAccountId(assetLiabs[0].id);
+      if (!fromAccountId) setFromAccountId(assetLiabs[0].id);
+      if (!toAccountId && assetLiabs.length > 1) setToAccountId(assetLiabs[1].id);
+      else if (!toAccountId) setToAccountId(assetLiabs[0].id);
+    }
+  }, [allLeafAccounts]);
+
+  const leafAccountsByType = (type: string) => allLeafAccounts.filter(a => a.accountType === type);
 
   const openPicker = (target: string, filter: string[]) => { setPickerTarget(target); setPickerFilter(filter); setPickerVisible(true); };
 
   const onPick = (acc: Account) => {
     setPickerVisible(false);
     const t = pickerTarget;
-    if (t === 'expense') setExpenseAccountId(acc.id);
-    else if (t === 'pay') setPayAccountId(acc.id);
-    else if (t === 'income') setIncomeAccountId(acc.id);
+    if (t === 'pay') setPayAccountId(acc.id);
     else if (t === 'deposit') setDepositAccountId(acc.id);
     else if (t === 'from') setFromAccountId(acc.id);
     else if (t === 'to') setToAccountId(acc.id);
     else if (t.startsWith('entry_')) {
       const idx = parseInt(t.replace('entry_', ''), 10);
-      setEntries(p => p.map((e, i) => i === idx ? {...e, accountId: acc.id, accountName: acc.name} : e));
+      setEntries(p => p.map((e, i) => i === idx ? { ...e, accountId: acc.id, accountName: acc.name } : e));
     }
   };
 
   const getName = (id: number | string | null) => !id ? '' : accounts.find(a => String(a.id) === String(id))?.name || '';
   const toggleTag = (tid: number) => setSelectedTagIds(p => p.includes(tid) ? p.filter(i => i !== tid) : [...p, tid]);
-  const addEntry = () => setEntries(p => [...p, {key: nextKey(), accountId: null, accountName: '', direction: 'DEBIT', amount: '', memo: ''}]);
+  const addEntry = () => setEntries(p => [...p, { key: nextKey(), accountId: null, accountName: '', direction: 'DEBIT', amount: '', memo: '' }]);
   const removeEntry = (i: number) => { if (entries.length <= 2) { Alert.alert('提示', '至少需要2条分录'); return; } setEntries(p => p.filter((_, j) => j !== i)); };
-  const updateEntry = (i: number, f: keyof EntryRow, v: any) => setEntries(p => p.map((e, j) => j === i ? {...e, [f]: v} : e));
+  const updateEntry = (i: number, f: keyof EntryRow, v: any) => setEntries(p => p.map((e, j) => j === i ? { ...e, [f]: v } : e));
 
-  const leafAccounts = (() => {
-    const pids = new Set(accounts.map(a => String(a.parentId)).filter(s => s && s !== 'null'));
-    const list = (pickerFilter.length > 0 ? accounts.filter(a => pickerFilter.includes(a.accountType)) : accounts).filter(a => !pids.has(String(a.id)));
-    const seen = new Set<string>();
-    return list.filter(a => { const k = String(a.id); if (seen.has(k)) return false; seen.add(k); return true; });
-  })();
+  const getPayAccountName = () => {
+    if (mode === 'expense') return getName(payAccountId);
+    if (mode === 'income') return getName(depositAccountId);
+    return getName(fromAccountId);
+  };
+
+  const openPayPicker = () => {
+    if (mode === 'expense') openPicker('pay', ['ASSET', 'LIABILITY']);
+    else if (mode === 'income') openPicker('deposit', ['ASSET', 'LIABILITY']);
+    else openPicker('from', ['ASSET', 'LIABILITY']);
+  };
 
   const buildEntries = (): EntryRequest[] | null => {
     if (mode === 'advanced') {
       for (const e of entries) {
-        if (!e.accountId) { Alert.alert('提示', '请为所有分录选择科目'); return null; }
-        if (!e.amount || parseFloat(e.amount) <= 0) { Alert.alert('提示', '分录金额必须为正数'); return null; }
+        if (!e.accountId) { Alert.alert('提示', '请选择科目'); return null; }
+        if (!e.amount || parseFloat(e.amount) <= 0) { Alert.alert('提示', '金额必需正数'); return null; }
       }
-      let ds = 0, cs = 0;
-      entries.forEach(e => { const v = parseFloat(e.amount) || 0; e.direction === 'DEBIT' ? ds += v : cs += v; });
-      if (Math.abs(ds - cs) > 0.001) { Alert.alert('借贷不平衡', `借方 ${ds.toFixed(2)} ≠ 贷方 ${cs.toFixed(2)}`); return null; }
-      return entries.map(e => ({accountId: e.accountId!, direction: e.direction, amount: parseFloat(e.amount).toFixed(2), memo: e.memo || undefined} as EntryRequest));
+      return entries.map(e => ({ accountId: e.accountId!, direction: e.direction, amount: parseFloat(e.amount).toFixed(2), memo: e.memo || undefined } as EntryRequest));
     }
-    const amt = parseFloat(amount);
+    const amt = getEvaluatedAmount();
     if (!amt || amt <= 0) { Alert.alert('提示', '请输入有效金额'); return null; }
     const s = amt.toFixed(2);
     if (mode === 'expense') {
-      if (!expenseAccountId || !payAccountId) { Alert.alert('提示', '请选择支出科目和付款账户'); return null; }
-      return [{accountId: expenseAccountId, direction: 'DEBIT' as const, amount: s}, {accountId: payAccountId, direction: 'CREDIT' as const, amount: s}] as EntryRequest[];
+      if (!expenseAccountId || !payAccountId) { Alert.alert('提示', '请选择科目和账户'); return null; }
+      return [{ accountId: expenseAccountId, direction: 'DEBIT', amount: s }, { accountId: payAccountId, direction: 'CREDIT', amount: s }];
     }
     if (mode === 'income') {
-      if (!incomeAccountId || !depositAccountId) { Alert.alert('提示', '请选择收入科目和收款账户'); return null; }
-      return [{accountId: depositAccountId, direction: 'DEBIT' as const, amount: s}, {accountId: incomeAccountId, direction: 'CREDIT' as const, amount: s}] as EntryRequest[];
+      if (!incomeAccountId || !depositAccountId) { Alert.alert('提示', '请选择科目和账户'); return null; }
+      return [{ accountId: depositAccountId, direction: 'DEBIT', amount: s }, { accountId: incomeAccountId, direction: 'CREDIT', amount: s }];
     }
     if (mode === 'transfer') {
-      if (!fromAccountId || !toAccountId) { Alert.alert('提示', '请选择转出和转入账户'); return null; }
-      return [{accountId: toAccountId, direction: 'DEBIT' as const, amount: s}, {accountId: fromAccountId, direction: 'CREDIT' as const, amount: s}] as EntryRequest[];
+      if (!fromAccountId || !toAccountId) { Alert.alert('提示', '请选择转接账户'); return null; }
+      return [{ accountId: toAccountId, direction: 'DEBIT', amount: s }, { accountId: fromAccountId, direction: 'CREDIT', amount: s }];
     }
     return null;
   };
@@ -171,293 +284,333 @@ const AddScreen = ({navigation}: any) => {
     if (mode === 'expense') { const a = getName(expenseAccountId), b = getName(payAccountId); return a && b ? `${a} - ${b}` : a || '日常支出'; }
     if (mode === 'income') { const a = getName(incomeAccountId), b = getName(depositAccountId); return a && b ? `${a} - ${b}` : a || '收入'; }
     if (mode === 'transfer') { const a = getName(fromAccountId), b = getName(toAccountId); return a && b ? `${a} → ${b}` : '转账'; }
-    return '复式记账';
+    return '记账';
   };
 
   const handleSubmit = async () => {
     if (!selectedBookId) { Alert.alert('提示', '请先选择账本'); return; }
     const desc = description.trim() || autoDesc();
+
+    // For Advanced, amounts come from entries. For others, evaluate the overall amount.
+    if (mode !== 'advanced') {
+      const ev = getEvaluatedAmount();
+      if (ev <= 0) {
+        Alert.alert('提示', '请输入大于0的金额');
+        return;
+      }
+    }
+
     const ents = buildEntries();
     if (!ents) return;
     const dp = transDate.replace(' ', 'T').split(/[-T:]/);
     const da = dp.map(Number);
-    if (da.length < 5) { Alert.alert('提示', '日期格式不正确'); return; }
+    if (da.length < 5) { Alert.alert('提示', '日期格式错误'); return; }
     while (da.length < 6) da.push(0);
     setSubmitting(true);
     try {
-      await createTransaction({transDate: da as any, description: desc, bookId: selectedBookId, tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined, entries: ents});
-      Alert.alert('✅ 记账成功', desc, [{text: '继续记账', onPress: resetForm}, {text: '返回', onPress: () => navigation.goBack()}]);
-    } catch (err: any) { Alert.alert('记账失败', err.message || '请稍后重试'); }
+      await createTransaction({ transDate: da as any, description: desc, bookId: selectedBookId, tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined, entries: ents });
+      // 记账成功，直接返回明细页面（DetailScreen 会自动刷新数据）
+      navigation.goBack();
+    } catch (err: any) { Alert.alert('记账失败', err.message || '重试'); }
     finally { setSubmitting(false); }
   };
 
   const resetForm = () => {
-    setDescription(''); setAmount(''); setSelectedTagIds([]);
-    setExpenseAccountId(null); setPayAccountId(null); setIncomeAccountId(null); setDepositAccountId(null); setFromAccountId(null); setToAccountId(null);
-    setEntries([{key: nextKey(), accountId: null, accountName: '', direction: 'DEBIT', amount: '', memo: ''}, {key: nextKey(), accountId: null, accountName: '', direction: 'CREDIT', amount: '', memo: ''}]);
+    setDescription(''); setAmountStr(''); setSelectedTagIds([]);
+    setEntries([{ key: nextKey(), accountId: null, accountName: '', direction: 'DEBIT', amount: '', memo: '' }, { key: nextKey(), accountId: null, accountName: '', direction: 'CREDIT', amount: '', memo: '' }]);
   };
 
-  const selectedBook = books.find(b => b.id === selectedBookId);
+  const handleKey = (key: string) => {
+    if (key === '完成') {
+      const match = amountStr.match(/[\+\-]$/);
+      if (match) {
+        setAmountStr(amountStr.slice(0, -1));
+      } else {
+        handleSubmit();
+      }
+      return;
+    }
+    if (key === '⌫') {
+      setAmountStr(prev => prev.length > 0 ? prev.slice(0, -1) : '');
+      return;
+    }
+    if (key === '📅今天' || key.match(/^\d{2}-\d{2}$/)) {
+      setDatePickerVisible(true);
+      return;
+    }
 
-  // ── 科目选择行 ──
-  const AccRow = ({icon, label, id, onPress}: {icon: string; label: string; id: number | string | null; onPress: () => void}) => (
-    <TouchableOpacity style={$.row} onPress={onPress} activeOpacity={0.55}>
-      <View style={[$.rowIcon, {backgroundColor: accent + '15'}]}><Text style={{fontSize: 16}}>{icon}</Text></View>
-      <Text style={$.rowLabel}>{label}</Text>
-      <Text style={[$.rowValue, !id && $.rowPlaceholder]} numberOfLines={1}>{id ? getName(id) : '请选择'}</Text>
-      <Text style={$.rowArrow}>›</Text>
-    </TouchableOpacity>
-  );
-
-  // ── 快捷科目 ──
-  const renderQuickAccounts = () => {
-    type RowDef = {icon: string; label: string; id: number | string | null; onPress: () => void};
-    const rowMap: Partial<Record<QuickMode, RowDef[]>> = {
-      expense: [
-        {icon: '🏷️', label: '支出科目', id: expenseAccountId, onPress: () => openPicker('expense', ['EXPENSE'])},
-        {icon: '💳', label: '付款账户', id: payAccountId, onPress: () => openPicker('pay', ['ASSET', 'LIABILITY'])},
-      ],
-      income: [
-        {icon: '🏷️', label: '收入科目', id: incomeAccountId, onPress: () => openPicker('income', ['INCOME'])},
-        {icon: '🏦', label: '收款账户', id: depositAccountId, onPress: () => openPicker('deposit', ['ASSET', 'LIABILITY'])},
-      ],
-      transfer: [
-        {icon: '📤', label: '转出账户', id: fromAccountId, onPress: () => openPicker('from', ['ASSET', 'LIABILITY'])},
-        {icon: '📥', label: '转入账户', id: toAccountId, onPress: () => openPicker('to', ['ASSET', 'LIABILITY'])},
-      ],
-    };
-    const rows = rowMap[mode] || [];
-    if (!rows.length) return null;
-    return (
-      <View style={$.card}>
-        {rows.map((r, i) => (
-          <React.Fragment key={r.label}>
-            {i > 0 && <View style={$.divider} />}
-            <AccRow {...r} />
-          </React.Fragment>
-        ))}
-      </View>
-    );
+    setAmountStr(prev => {
+      if (prev.length > 20) return prev;
+      if (['+', '-'].includes(key)) {
+        if (['+', '-'].includes(prev.slice(-1))) return prev.slice(0, -1) + key;
+        if (prev.slice(-1) === '.') return prev.slice(0, -1) + key;
+        if (prev === '') return '0' + key;
+        return prev + key;
+      }
+      if (key === '.') {
+        const seg = prev.split(/[\+\-]/).pop();
+        if (seg?.includes('.')) return prev;
+        if (prev === '' || ['+', '-'].includes(prev.slice(-1))) return prev + '0.';
+        return prev + '.';
+      }
+      if (prev === '0') return key;
+      const seg2 = prev.split(/[\+\-]/).pop();
+      if (seg2 === '0') return prev.slice(0, -1) + key;
+      return prev + key;
+    });
   };
 
-  // ── 高级分录 ──
-  const renderEntries = () => {
-    let ds = 0, cs = 0;
-    entries.forEach(e => { const v = parseFloat(e.amount) || 0; e.direction === 'DEBIT' ? ds += v : cs += v; });
-    const ok = entries.some(e => e.amount) && Math.abs(ds - cs) < 0.001;
+  const getShortDate = () => {
+    const d = new Date();
+    const pad = (v: number) => String(v).padStart(2, '0');
+    const tStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    if (transDate.startsWith(tStr)) return '📅今天';
+    return transDate.substring(5, 10); // MM-DD
+  };
+
+  const KEYPAD = [
+    ['7', '8', '9', getShortDate()],
+    ['4', '5', '6', '+'],
+    ['1', '2', '3', '-'],
+    ['.', '0', '⌫', '完成']
+  ];
+
+  const renderCategoryGrid = () => {
+    const isExp = mode === 'expense';
+    const list = leafAccountsByType(isExp ? 'EXPENSE' : 'INCOME');
+    const selectedId = isExp ? expenseAccountId : incomeAccountId;
+
     return (
-      <>
-        <View style={$.balanceBar}>
-          <View style={$.balanceHalf}>
-            <Text style={$.balanceSmall}>借方</Text>
-            <Text style={[$.balanceNum, {color: '#3B7DD8'}]}>¥{ds.toFixed(2)}</Text>
-          </View>
-          <View style={[$.balanceDot, {backgroundColor: ok ? '#51CF66' : '#FF6B6B'}]}>
-            <Text style={$.balanceDotText}>{ok ? '✓' : '≠'}</Text>
-          </View>
-          <View style={[$.balanceHalf, {alignItems: 'flex-end'}]}>
-            <Text style={$.balanceSmall}>贷方</Text>
-            <Text style={[$.balanceNum, {color: '#E67E22'}]}>¥{cs.toFixed(2)}</Text>
-          </View>
-        </View>
-        {entries.map((entry, idx) => (
-          <View key={entry.key} style={$.entryCard}>
-            <View style={$.entryHead}>
+      <ScrollView bounces={false} contentContainerStyle={$.gridContent} showsVerticalScrollIndicator={false}>
+        <View style={$.grid}>
+          {list.map(a => {
+            const isSel = String(a.id) === String(selectedId);
+            const smartIcon = getSmartIcon(a.icon, a.name);
+            return (
               <TouchableOpacity
-                style={[$.entryDir, {backgroundColor: entry.direction === 'DEBIT' ? '#3B7DD8' : '#E67E22'}]}
-                onPress={() => updateEntry(idx, 'direction', entry.direction === 'DEBIT' ? 'CREDIT' : 'DEBIT')}>
-                <Text style={$.entryDirText}>{entry.direction === 'DEBIT' ? '借' : '贷'}</Text>
+                key={a.id}
+                style={$.gridItem}
+                onPress={() => isExp ? setExpenseAccountId(a.id) : setIncomeAccountId(a.id)}
+                activeOpacity={0.6}
+              >
+                <View style={[$.iconCircle, isSel && $.iconCircleSel]}>
+                  <IconifyIcon icon={smartIcon} size={26} color={isSel ? '#fff' : '#555'} fallback="📌" />
+                </View>
+                <Text style={[$.gridLabel, isSel && $.gridLabelSel]} numberOfLines={1}>{a.name}</Text>
               </TouchableOpacity>
-              <Text style={$.entryNum}>分录 {idx + 1}</Text>
-              {entries.length > 2 && (
-                <TouchableOpacity onPress={() => removeEntry(idx)} style={$.entryDel}><Text style={$.entryDelText}>删除</Text></TouchableOpacity>
-              )}
-            </View>
-            <TouchableOpacity style={$.entryAccBtn} onPress={() => openPicker(`entry_${idx}`, [])}>
-              <Text style={[$.entryAccText, !entry.accountId && $.rowPlaceholder]}>{entry.accountId ? entry.accountName : '选择科目'}</Text>
-              <Text style={$.rowArrow}>›</Text>
-            </TouchableOpacity>
-            <View style={$.entryInputs}>
-              <View style={$.entryAmtWrap}>
-                <Text style={$.entryAmtSign}>¥</Text>
-                <TextInput style={$.entryAmtInput} placeholder="0.00" placeholderTextColor="#D0D5DD" keyboardType="decimal-pad" value={entry.amount} onChangeText={v => updateEntry(idx, 'amount', v)} />
-              </View>
-              <TextInput style={$.entryMemo} placeholder="备注" placeholderTextColor="#D0D5DD" value={entry.memo} onChangeText={v => updateEntry(idx, 'memo', v)} />
-            </View>
-          </View>
-        ))}
-        <TouchableOpacity style={$.addBtn} onPress={addEntry} activeOpacity={0.6}>
-          <Text style={$.addBtnText}>＋ 添加分录</Text>
-        </TouchableOpacity>
-      </>
+            );
+          })}
+        </View>
+        <View style={{ height: 12 }} />
+      </ScrollView>
     );
   };
-
-  // ── 主渲染 ──
-  if (loading) return (
-    <SafeAreaView style={$.safe} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor="#3B7DD8" />
-      <View style={$.center}><ActivityIndicator size="large" color="#3B7DD8" /></View>
-    </SafeAreaView>
-  );
 
   return (
     <SafeAreaView style={$.safe} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor="#3B7DD8" />
+      <StatusBar barStyle="light-content" backgroundColor={THEME} />
 
-      {/* 顶栏 — 统一蓝色 */}
+      {/* Header */}
       <View style={$.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
-          <Text style={$.backBtn}>‹</Text>
+        <TouchableOpacity style={$.headSide} onPress={() => navigation.goBack()}>
+          <Text style={$.headCancelText}>取消</Text>
         </TouchableOpacity>
-        <Text style={$.headerTitle}>记一笔</Text>
-        <TouchableOpacity onPress={() => setBookPickerVisible(true)} style={$.bookChip}>
-          <Text style={$.bookChipText}>📒 {selectedBook?.name || '账本'}</Text>
-        </TouchableOpacity>
-      </View>
 
-      {/* 金额区域 — 蓝色背景 */}
-      <View style={$.amountArea}>
-        {/* 模式切换 */}
-        <View style={$.modeRow}>
+        <View style={$.tabs}>
           {(['expense', 'income', 'transfer', 'advanced'] as QuickMode[]).map(m => {
-            const active = mode === m;
-            const labels: Record<QuickMode, string> = {expense: '支出', income: '收入', transfer: '转账', advanced: '高级'};
+            const labels: Record<QuickMode, string> = { expense: '支出', income: '收入', transfer: '转账', advanced: '高级' };
+            const ac = mode === m;
             return (
-              <TouchableOpacity key={m} style={[$.modeItem, active && $.modeItemActive]} onPress={() => setMode(m)} activeOpacity={0.7}>
-                <Text style={[$.modeText, active && $.modeTextActive]}>{labels[m]}</Text>
-                {active && <View style={[$.modeBar2, {backgroundColor: MODE_ACCENT[m]}]} />}
+              <TouchableOpacity key={m} style={$.tab} onPress={() => setMode(m)}>
+                <Text style={[$.tabText, ac && $.tabTextAc]}>{labels[m]}</Text>
+                {ac && <View style={$.tabBar} />}
               </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* 金额输入 */}
-        {mode !== 'advanced' && (
-          <View style={$.amountRow}>
-            <Text style={$.amountSign}>¥</Text>
-            <TextInput style={$.amountInput} placeholder="0.00" placeholderTextColor="rgba(255,255,255,0.35)" keyboardType="decimal-pad" value={amount} onChangeText={setAmount} autoFocus />
+        <TouchableOpacity style={[$.headSide, { alignItems: 'flex-end' }]} onPress={() => setBookPickerVisible(true)}>
+          <Text style={$.bookNameText} numberOfLines={1}>{selectedBookId ? books.find(b => b.id === selectedBookId)?.name : '账本'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Body Area */}
+      <View style={$.body}>
+        {(mode === 'expense' || mode === 'income') && renderCategoryGrid()}
+
+        {mode === 'transfer' && (
+          <View style={$.formPad}>
+            <TouchableOpacity style={$.transferBtn} onPress={() => openPicker('from', ['ASSET', 'LIABILITY'])}>
+              <Text style={$.transferIcon}>📤</Text>
+              <Text style={$.transferLabel}>转出账户</Text>
+              <Text style={$.transferVal}>{getName(fromAccountId) || '请选择'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[$.transferBtn, { marginTop: 12 }]} onPress={() => openPicker('to', ['ASSET', 'LIABILITY'])}>
+              <Text style={$.transferIcon}>📥</Text>
+              <Text style={$.transferLabel}>转入账户</Text>
+              <Text style={$.transferVal}>{getName(toAccountId) || '请选择'}</Text>
+            </TouchableOpacity>
           </View>
         )}
+
         {mode === 'advanced' && (
-          <Text style={$.advHint}>复式记账 · 自由编辑分录</Text>
+          <ScrollView contentContainerStyle={$.formPad} showsVerticalScrollIndicator={false}>
+            {entries.map((ent, i) => (
+              <View key={ent.key} style={$.entryCard}>
+                <TouchableOpacity style={[$.entryDir, ent.direction === 'DEBIT' ? { backgroundColor: '#3B7DD8' } : { backgroundColor: '#E67E22' }]} onPress={() => updateEntry(i, 'direction', ent.direction === 'DEBIT' ? 'CREDIT' : 'DEBIT')}>
+                  <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>{ent.direction === 'DEBIT' ? '借' : '贷'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={$.entryAcc} onPress={() => openPicker(`entry_${i}`, [])}>
+                  <Text style={$.entryAccText}>{ent.accountId ? ent.accountName : '点击选科目'}</Text>
+                </TouchableOpacity>
+                <TextInput style={$.entryInput} placeholder="金额" keyboardType="decimal-pad" value={ent.amount} onChangeText={v => updateEntry(i, 'amount', v)} />
+                {entries.length > 2 && (
+                  <TouchableOpacity onPress={() => removeEntry(i)} style={$.entryDel}><Text style={{ color: '#E63946', fontSize: 20 }}>×</Text></TouchableOpacity>
+                )}
+              </View>
+            ))}
+            <TouchableOpacity style={$.entryAdd} onPress={addEntry}><Text style={{ color: '#666' }}>+ 添加分录</Text></TouchableOpacity>
+            <View style={{ height: 12 }} />
+          </ScrollView>
         )}
       </View>
 
-      <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView style={$.body} contentContainerStyle={$.bodyPad} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      {/* Bottom safe area spacer for advanced mode */}
+      {mode === 'advanced' && (
+        <View style={{ height: insets.bottom, backgroundColor: '#F2F4F7' }} />
+      )}
 
-          {/* 科目 */}
-          {mode !== 'advanced' && renderQuickAccounts()}
-          {mode === 'advanced' && renderEntries()}
+      {/* Tags Scroll */}
+      {tags.length > 0 && mode !== 'advanced' && (
+        <View style={$.tagsRowWrapper}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={$.tagsRow}>
+            {tags.map(tag => {
+              const sel = selectedTagIds.includes(tag.id);
+              return (
+                <TouchableOpacity key={tag.id} style={[$.tagChip, sel && $.tagChipSel]} onPress={() => toggleTag(tag.id)}>
+                  <IconifyIcon icon={tag.icon || ''} size={13} color={sel ? '#fff' : '#666'} fallback="🏷️" />
+                  <Text style={[$.tagChipText, sel && { color: '#fff' }]}>{tag.tagName}</Text>
+                </TouchableOpacity>
+              )
+            })}
+          </ScrollView>
+        </View>
+      )}
 
-          {/* 描述 + 日期 */}
-          <View style={$.card}>
-            <View style={$.row}>
-              <View style={[$.rowIcon, {backgroundColor: '#F0F6FF'}]}><Text style={{fontSize: 16}}>📝</Text></View>
-              <Text style={$.rowLabel}>描述</Text>
-              <TextInput style={$.rowInput} placeholder="选填，自动生成" placeholderTextColor="#D0D5DD" value={description} onChangeText={setDescription} maxLength={100} />
-            </View>
-            <View style={$.divider} />
-            <TouchableOpacity style={$.row} onPress={() => setDatePickerVisible(true)} activeOpacity={0.55}>
-              <View style={[$.rowIcon, {backgroundColor: '#F0F6FF'}]}><Text style={{fontSize: 16}}>📅</Text></View>
-              <Text style={$.rowLabel}>日期</Text>
-              <Text style={$.rowValue}>{transDate}</Text>
-              <Text style={$.rowArrow}>›</Text>
-            </TouchableOpacity>
-          </View>
+      {/* Bottom Area: Note Input & Display Amt & Keyboard */}
+      {mode !== 'advanced' && (
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={$.bottomArea}>
 
-          {/* 标签 */}
-          {tags.length > 0 && (
-            <View style={$.card}>
-              <View style={[$.row, {paddingBottom: 8}]}>
-                <View style={[$.rowIcon, {backgroundColor: '#F0F6FF'}]}><Text style={{fontSize: 16}}>🏷️</Text></View>
-                <Text style={$.rowLabel}>标签</Text>
+            {/* Pay Accounts Scroll (Single Row) */}
+            {mode !== 'transfer' && (
+              <View style={$.payRowWrapper}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={$.payRow}>
+                  {allLeafAccounts.filter(a => ['ASSET', 'LIABILITY'].includes(a.accountType)).map(acc => {
+                    const isPaySel = mode === 'expense' ? acc.id === payAccountId : acc.id === depositAccountId;
+                    return (
+                      <TouchableOpacity
+                        key={acc.id}
+                        style={[$.payChip, isPaySel && $.payChipSel]}
+                        onPress={() => mode === 'expense' ? setPayAccountId(acc.id) : setDepositAccountId(acc.id)}>
+                        <Text style={[$.payChipText, isPaySel && $.payChipTextSel]}>{acc.name}</Text>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </ScrollView>
               </View>
-              <View style={$.tagGrid}>
-                {tags.map(tag => {
-                  const sel = selectedTagIds.includes(tag.id);
-                  return (
-                    <TouchableOpacity
-                      key={tag.id}
-                      style={[
-                        $.tag,
-                        sel && {backgroundColor: tag.color || '#3B7DD8', borderColor: tag.color || '#3B7DD8'},
-                      ]}
-                      onPress={() => toggleTag(tag.id)}
-                      activeOpacity={0.6}>
-                      <IconifyIcon icon={tag.icon || ''} size={18} color={sel ? '#fff' : '#666'} fallback="🏷️" />
-                      <Text style={[$.tagText, sel && {color: '#fff'}]}>{tag.tagName}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-
-          {/* 提交 */}
-          <TouchableOpacity style={[$.submit, submitting && {opacity: 0.6}]} onPress={handleSubmit} disabled={submitting} activeOpacity={0.7}>
-            {submitting ? <ActivityIndicator color="#fff" /> : (
-              <Text style={$.submitText}>💾  保存记录</Text>
             )}
-          </TouchableOpacity>
-          <View style={{height: 40}} />
-        </ScrollView>
-      </KeyboardAvoidingView>
 
-      {/* 科目弹窗 */}
+            {/* Input Row */}
+            <View style={$.inputRow}>
+              <Text style={{ color: '#bbb', marginHorizontal: 6 }}>备注:</Text>
+              <TextInput
+                style={$.noteInput}
+                placeholder="点击填写"
+                placeholderTextColor="#bbb"
+                value={description}
+                onChangeText={setDescription}
+                maxLength={40}
+              />
+              <View style={$.amtWrap}>
+                <Text style={$.amtCurrency}>¥</Text>
+                <Text style={$.amtValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{amountStr || '0.00'}</Text>
+              </View>
+            </View>
+
+            {/* Custom Keypad */}
+            <View style={$.keypad}>
+              {KEYPAD.map((row, i) => (
+                <View style={$.keyRow} key={`row_${i}`}>
+                  {row.map(btn => {
+                    const isDone = btn === '完成';
+                    return (
+                      <TouchableOpacity
+                        key={btn}
+                        style={[$.keyBtn, isDone && $.keyDoneBtn]}
+                        onPress={() => handleKey(btn)}
+                        onLongPress={() => btn === '⌫' ? setAmountStr('') : undefined}
+                        activeOpacity={0.6}>
+                        {submitting && isDone ? (
+                          <ActivityIndicator color="#fff" />
+                        ) : (
+                          <Text style={[$.keyText, isDone && $.keyDoneText]}>{btn}</Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ))}
+            </View>
+            <View style={{ height: insets.bottom, backgroundColor: '#F5F6F8' }} />
+          </View>
+        </KeyboardAvoidingView>
+      )}
+
+      {/* Shared Modals */}
       <Modal visible={pickerVisible} transparent animationType="slide">
         <TouchableOpacity style={$.overlay} activeOpacity={1} onPress={() => setPickerVisible(false)}>
           <View style={$.sheet} onStartShouldSetResponder={() => true}>
-            <View style={$.handle} />
-            <Text style={$.sheetTitle}>选择科目</Text>
-            <ScrollView style={{paddingHorizontal: 20}} showsVerticalScrollIndicator={false}>
+            <View style={$.sheetLine} />
+            <Text style={$.sheetTitle}>请选择</Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
               {Object.entries(
-                leafAccounts.reduce<Record<string, Account[]>>((g, a) => { (g[a.accountType] ||= []).push(a); return g; }, {}),
+                pickerLeafAccounts.reduce<Record<string, Account[]>>((g, a) => { (g[a.accountType] ||= []).push(a); return g; }, {}),
               ).map(([type, accs]) => (
-                <View key={type} style={{marginBottom: 20}}>
-                  <Text style={$.groupTitle}>{ACCOUNT_TYPE_LABEL[type] || type}</Text>
-                  <View style={$.chipGrid}>
-                    {accs.map((a, i) => (
-                      <TouchableOpacity key={`${type}_${i}_${a.id}`} style={$.chip} onPress={() => onPick(a)} activeOpacity={0.55}>
-                        <Text style={$.chipText}>{a.name}</Text>
+                <View key={type} style={{ marginBottom: 20 }}>
+                  <Text style={$.sheetGrp}>{ACCOUNT_TYPE_LABEL[type] || type}</Text>
+                  <View style={$.sheetChips}>
+                    {accs.map(a => (
+                      <TouchableOpacity key={a.id} style={$.sheetChip} onPress={() => onPick(a)}>
+                        <Text style={$.sheetChipText}>{a.name}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 </View>
               ))}
-              {leafAccounts.length === 0 && <Text style={$.empty}>暂无可选科目</Text>}
-              <View style={{height: 24}} />
+              {pickerLeafAccounts.length === 0 && <Text style={{ textAlign: 'center', color: '#ccc', marginVertical: 30 }}>无可用选项</Text>}
             </ScrollView>
           </View>
         </TouchableOpacity>
       </Modal>
 
-      {/* 账本弹窗 */}
       <Modal visible={bookPickerVisible} transparent animationType="fade">
-        <TouchableOpacity style={$.overlayCenter} activeOpacity={1} onPress={() => setBookPickerVisible(false)}>
+        <TouchableOpacity style={$.overlayMid} activeOpacity={1} onPress={() => setBookPickerVisible(false)}>
           <View style={$.bookCard} onStartShouldSetResponder={() => true}>
-            <View style={$.handle} />
-            <Text style={$.sheetTitle}>选择账本</Text>
+            <Text style={$.sheetTitle}>我的账本</Text>
             {books.map(b => (
-              <TouchableOpacity key={b.id} style={[$.bookRow, b.id === selectedBookId && $.bookRowActive]} onPress={() => { setSelectedBookId(b.id); setBookPickerVisible(false); }} activeOpacity={0.6}>
-                <Text style={{fontSize: 20, marginRight: 12}}>📒</Text>
-                <Text style={[$.bookName, b.id === selectedBookId && {color: '#3B7DD8', fontWeight: '700'}]}>{b.name}</Text>
-                {b.id === selectedBookId && <Text style={{color: '#3B7DD8', fontWeight: '700', fontSize: 16}}>✓</Text>}
+              <TouchableOpacity key={b.id} style={[$.bookRow, b.id === selectedBookId && $.bookRowAc]} onPress={() => { handleSwitchBook(b.id); setBookPickerVisible(false); }}>
+                <Text style={[$.bookName, b.id === selectedBookId && { fontWeight: '700', color: '#111' }]}>{b.name}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </TouchableOpacity>
       </Modal>
 
-      {/* 日期时间选择器 */}
       <DateTimePickerComponent
         visible={datePickerVisible}
         value={transDate}
-        onConfirm={(dateTime) => {
-          setTransDate(dateTime);
-          setDatePickerVisible(false);
-        }}
+        onConfirm={(dateTime) => { setTransDate(dateTime); setDatePickerVisible(false); }}
         onCancel={() => setDatePickerVisible(false)}
       />
     </SafeAreaView>
@@ -465,96 +618,85 @@ const AddScreen = ({navigation}: any) => {
 };
 
 const $ = StyleSheet.create({
-  safe: {flex: 1, backgroundColor: '#3B7DD8'},
-  center: {flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F2F4F7'},
+  safe: { flex: 1, backgroundColor: THEME },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  // Header — 统一蓝色
-  header: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#3B7DD8'},
-  backBtn: {fontSize: 32, color: '#fff', lineHeight: 34},
-  headerTitle: {fontSize: 17, fontWeight: '700', color: '#fff'},
-  bookChip: {backgroundColor: 'rgba(255,255,255,0.18)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16},
-  bookChipText: {fontSize: 12, color: '#fff', fontWeight: '600'},
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 48, paddingHorizontal: 16 },
+  headSide: { width: 56, justifyContent: 'center' },
+  headCancelText: { fontSize: 15, color: '#fff' },
+  bookNameText: { fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '500' },
 
-  // Amount area — 蓝色背景
-  amountArea: {backgroundColor: '#3B7DD8', paddingBottom: 20},
-  modeRow: {flexDirection: 'row', paddingHorizontal: 20, marginBottom: 16},
-  modeItem: {flex: 1, alignItems: 'center', paddingVertical: 8},
-  modeItemActive: {},
-  modeText: {fontSize: 14, color: 'rgba(255,255,255,0.55)', fontWeight: '600'},
-  modeTextActive: {color: '#fff'},
-  modeBar2: {width: 20, height: 3, borderRadius: 2, marginTop: 6},
-  amountRow: {flexDirection: 'row', alignItems: 'baseline', paddingHorizontal: 24},
-  amountSign: {fontSize: 24, fontWeight: '700', color: 'rgba(255,255,255,0.7)', marginRight: 6},
-  amountInput: {flex: 1, fontSize: 42, fontWeight: '800', color: '#fff', padding: 0, letterSpacing: -1},
-  advHint: {fontSize: 14, color: 'rgba(255,255,255,0.6)', textAlign: 'center', paddingVertical: 8},
+  tabs: { flexDirection: 'row', flex: 1, justifyContent: 'center' },
+  tab: { paddingHorizontal: 14, paddingVertical: 10, position: 'relative', alignItems: 'center' },
+  tabText: { fontSize: 16, color: 'rgba(255,255,255,0.6)', fontWeight: '400' },
+  tabTextAc: { color: '#fff', fontWeight: '700' },
+  tabBar: { position: 'absolute', bottom: 4, width: 20, height: 3, backgroundColor: '#fff', borderRadius: 2 },
 
-  // Body
-  body: {flex: 1, backgroundColor: '#F2F4F7', borderTopLeftRadius: 20, borderTopRightRadius: 20},
-  bodyPad: {padding: 16, paddingTop: 16},
+  body: { flex: 1, backgroundColor: '#F2F4F7', borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
 
-  // Card
-  card: {backgroundColor: '#fff', borderRadius: 14, marginBottom: 10, overflow: 'hidden', elevation: 1, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.04, shadowRadius: 3},
-  divider: {height: StyleSheet.hairlineWidth, backgroundColor: '#F0F2F5', marginLeft: 56},
+  gridContent: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 8 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap' },
+  gridItem: { width: '25%', alignItems: 'center', marginBottom: 20 },
+  iconCircle: { width: 54, height: 54, borderRadius: 27, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginBottom: 6, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3 },
+  iconCircleSel: { backgroundColor: THEME, elevation: 3, shadowColor: THEME, shadowOpacity: 0.3, shadowRadius: 6 },
+  gridLabel: { fontSize: 12, color: '#888', maxWidth: 64, textAlign: 'center' },
+  gridLabelSel: { color: THEME, fontWeight: '700' },
 
-  // Row
-  row: {flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 14},
-  rowIcon: {width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 10},
-  rowLabel: {fontSize: 14, fontWeight: '500', color: '#666', width: 64},
-  rowValue: {flex: 1, fontSize: 14, color: '#1A1A2E', textAlign: 'right'},
-  rowPlaceholder: {color: '#C8CDD5'},
-  rowArrow: {fontSize: 16, color: '#D0D5DD', marginLeft: 4},
-  rowInput: {flex: 1, fontSize: 14, color: '#1A1A2E', textAlign: 'right', padding: 0},
+  tagsRowWrapper: { backgroundColor: '#fff', borderTopWidth: StyleSheet.hairlineWidth, borderColor: '#E8E8E8' },
+  tagsRow: { paddingHorizontal: 16, paddingVertical: 8, alignItems: 'center', gap: 8 },
+  tagChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#F0F2F5', borderRadius: 16 },
+  tagChipSel: { backgroundColor: THEME },
+  tagChipText: { fontSize: 12, color: '#666' },
 
-  // Tags
-  tagGrid: {flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, paddingBottom: 14, gap: 8},
-  tag: {flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#F5F6F8', borderWidth: 1.5, borderColor: '#E8ECF1', gap: 4},
-  tagText: {fontSize: 13, fontWeight: '500', color: '#666'},
+  payRowWrapper: { backgroundColor: '#fff', borderTopWidth: StyleSheet.hairlineWidth, borderColor: '#E8E8E8' },
+  payRow: { paddingHorizontal: 16, paddingVertical: 10, gap: 8, alignItems: 'center' },
+  payChip: { paddingHorizontal: 14, paddingVertical: 7, backgroundColor: '#F0F2F5', borderRadius: 20, borderWidth: 1.2, borderColor: '#E0E3E8' },
+  payChipSel: { backgroundColor: THEME, borderColor: THEME },
+  payChipText: { fontSize: 13, color: '#555' },
+  payChipTextSel: { color: '#FFF', fontWeight: '600' },
 
-  // Submit
-  submit: {backgroundColor: '#3B7DD8', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 4, elevation: 4, shadowColor: '#3B7DD8', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.25, shadowRadius: 8},
-  submitText: {fontSize: 16, fontWeight: '700', color: '#fff'},
+  bottomArea: { backgroundColor: '#FFF' },
+  inputRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, height: 52, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E8E8E8' },
+  noteInput: { flex: 1, fontSize: 14, color: '#333', paddingVertical: 0 },
+  amtWrap: { flexDirection: 'row', alignItems: 'baseline', marginLeft: 8, maxWidth: 180 },
+  amtCurrency: { fontSize: 16, color: THEME, fontWeight: '600', marginRight: 2 },
+  amtValue: { fontSize: 28, color: '#111', fontWeight: '800' },
 
-  // Advanced
-  balanceBar: {flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 20, marginBottom: 10, elevation: 1, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.04, shadowRadius: 3},
-  balanceHalf: {flex: 1},
-  balanceSmall: {fontSize: 11, color: '#999', marginBottom: 2},
-  balanceNum: {fontSize: 18, fontWeight: '800'},
-  balanceDot: {width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginHorizontal: 12},
-  balanceDotText: {fontSize: 13, color: '#fff', fontWeight: '700'},
+  keypad: { backgroundColor: '#F5F6F8', paddingBottom: Platform.OS === 'ios' ? 20 : 0 },
+  keyRow: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderColor: '#D8D8D8' },
+  keyBtn: { flex: 1, height: 56, justifyContent: 'center', alignItems: 'center', borderRightWidth: StyleSheet.hairlineWidth, borderColor: '#D8D8D8', backgroundColor: '#FFF' },
+  keyDoneBtn: { backgroundColor: THEME },
+  keyText: { fontSize: 22, color: '#333', fontWeight: '400' },
+  keyDoneText: { fontSize: 18, fontWeight: '700', color: '#fff' },
 
-  entryCard: {backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 8, elevation: 1, shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.04, shadowRadius: 3},
-  entryHead: {flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8},
-  entryDir: {paddingHorizontal: 14, paddingVertical: 5, borderRadius: 8},
-  entryDirText: {fontSize: 13, fontWeight: '700', color: '#fff'},
-  entryNum: {flex: 1, fontSize: 13, color: '#999', fontWeight: '500'},
-  entryDel: {paddingHorizontal: 8, paddingVertical: 4},
-  entryDelText: {fontSize: 12, color: '#FF6B6B', fontWeight: '500'},
-  entryAccBtn: {flexDirection: 'row', alignItems: 'center', backgroundColor: '#F7F8FA', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, marginBottom: 8},
-  entryAccText: {flex: 1, fontSize: 14, color: '#1A1A2E'},
-  entryInputs: {flexDirection: 'row', gap: 8},
-  entryAmtWrap: {flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#F7F8FA', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9},
-  entryAmtSign: {fontSize: 14, fontWeight: '700', color: '#999', marginRight: 4},
-  entryAmtInput: {flex: 1, fontSize: 14, fontWeight: '600', color: '#1A1A2E', padding: 0},
-  entryMemo: {flex: 1, backgroundColor: '#F7F8FA', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14, color: '#1A1A2E'},
-  addBtn: {borderWidth: 1.5, borderColor: '#3B7DD8', borderStyle: 'dashed', borderRadius: 14, paddingVertical: 13, alignItems: 'center', marginBottom: 10},
-  addBtnText: {fontSize: 14, fontWeight: '600', color: '#3B7DD8'},
+  formPad: { padding: 16 },
+  transferBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F6F8', padding: 16, borderRadius: 12 },
+  transferIcon: { fontSize: 20, marginRight: 12 },
+  transferLabel: { fontSize: 15, color: '#666', width: 70 },
+  transferVal: { flex: 1, fontSize: 16, color: '#111', textAlign: 'right', fontWeight: '500' },
 
-  // Modals
-  overlay: {flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end'},
-  overlayCenter: {flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center'},
-  sheet: {backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%', paddingTop: 12},
-  handle: {width: 36, height: 4, borderRadius: 2, backgroundColor: '#E0E0E0', alignSelf: 'center', marginBottom: 16},
-  sheetTitle: {fontSize: 16, fontWeight: '700', color: '#333', textAlign: 'center', marginBottom: 16},
-  groupTitle: {fontSize: 12, fontWeight: '700', color: '#999', marginBottom: 10, letterSpacing: 0.5},
-  chipGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: 8},
-  chip: {paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: '#F5F6F8'},
-  chipText: {fontSize: 14, color: '#333', fontWeight: '500'},
-  empty: {fontSize: 14, color: '#C8CDD5', textAlign: 'center', paddingVertical: 40},
+  entryCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F6F8', padding: 12, borderRadius: 12, marginBottom: 8 },
+  entryDir: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginRight: 8 },
+  entryAcc: { flex: 1 },
+  entryAccText: { fontSize: 15, color: '#333' },
+  entryInput: { width: 90, textAlign: 'right', fontSize: 16, fontWeight: '600', padding: 0 },
+  entryDel: { marginLeft: 12, paddingHorizontal: 4 },
+  entryAdd: { alignItems: 'center', paddingVertical: 12, borderWidth: 1, borderColor: '#E0E0E0', borderStyle: 'dashed', borderRadius: 12 },
 
-  bookCard: {backgroundColor: '#fff', borderRadius: 20, paddingTop: 12, paddingBottom: 20, paddingHorizontal: 20, width: '82%', elevation: 12, shadowColor: '#000', shadowOffset: {width: 0, height: 8}, shadowOpacity: 0.12, shadowRadius: 16},
-  bookRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 12, borderRadius: 12, marginTop: 4},
-  bookRowActive: {backgroundColor: '#F0F6FF'},
-  bookName: {flex: 1, fontSize: 15, color: '#333', fontWeight: '500'},
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  overlayMid: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%' },
+  sheetLine: { width: 40, height: 4, backgroundColor: '#E0E0E0', borderRadius: 2, alignSelf: 'center', marginTop: 12 },
+  sheetTitle: { fontSize: 16, fontWeight: '600', textAlign: 'center', paddingVertical: 16 },
+  sheetGrp: { fontSize: 13, color: '#999', marginBottom: 12 },
+  sheetChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  sheetChip: { backgroundColor: '#F5F6F8', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
+  sheetChipText: { fontSize: 14, color: '#333' },
+
+  bookCard: { width: '80%', backgroundColor: '#FFF', borderRadius: 16, padding: 20 },
+  bookRow: { paddingVertical: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#F0F0F0' },
+  bookRowAc: { backgroundColor: '#F9F9F9' },
+  bookName: { fontSize: 16, textAlign: 'center', color: '#666' }
 });
 
 export default AddScreen;

@@ -15,3 +15,11 @@ export interface DownloadProgress {
   contentLength: number;
   progress: number; // 0-100
 }
+
+export interface EnhancedDownloadProgress extends DownloadProgress {
+  speed: number; // bytes per second
+  remainingTime: number; // seconds
+  downloadedSize: string; // formatted string (e.g., "12.5 MB")
+  totalSize: string; // formatted string (e.g., "45.2 MB")
+  speedFormatted: string; // formatted string (e.g., "2.5 MB/s")
+}

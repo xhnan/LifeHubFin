@@ -1,0 +1,177 @@
+﻿--------- beginning of crash
+03-03 06:10:35.024 13912 13992 F libc    : Fatal signal 6 (SIGABRT), code -1 (SI_QUEUE) in tid 13992 (bt_stack_manage), pid 13912 (droid.bluetooth)
+03-04 07:07:29.882 18784 18784 F DEBUG   : *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
+03-04 07:07:29.882 18784 18784 F DEBUG   : Build fingerprint: 'google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.005/12228598:user/release-keys'
+03-04 07:07:29.882 18784 18784 F DEBUG   : Revision: '0'
+03-04 07:07:29.882 18784 18784 F DEBUG   : ABI: 'x86_64'
+03-04 07:07:29.882 18784 18784 F DEBUG   : Timestamp: 2026-03-04 07:07:24.129655300+0000
+03-04 07:07:29.882 18784 18784 F DEBUG   : Process uptime: 0s
+03-04 07:07:29.882 18784 18784 F DEBUG   : Cmdline: com.google.android.bluetooth
+03-04 07:07:29.882 18784 18784 F DEBUG   : pid: 13912, tid: 13992, name: bt_stack_manage  >>> com.google.android.bluetooth <<<
+03-04 07:07:29.882 18784 18784 F DEBUG   : uid: 1002
+03-04 07:07:29.882 18784 18784 F DEBUG   : signal 6 (SIGABRT), code -1 (SI_QUEUE), fault addr --------
+03-04 07:07:29.882 18784 18784 F DEBUG   : Abort message: 'system/gd/hci/hci_layer.cc:478 on_hardware_error: Hardware Error Event with code 0x42'
+03-04 07:07:29.882 18784 18784 F DEBUG   :     rax 0000000000000000  rbx 000074a6c08078b8  rcx 000074aa02d1cb90  rdx 0000000000000006
+03-04 07:07:29.882 18784 18784 F DEBUG   :     r8  000074aa02daa380  r9  000074aa02daa380  r10 000074a6c08078c0  r11 0000000000000203
+03-04 07:07:29.882 18784 18784 F DEBUG   :     r12 000074a6c0807a18  r13 0000000000000002  r14 0000000000003658  r15 00000000000036a8
+03-04 07:07:29.882 18784 18784 F DEBUG   :     rdi 0000000000003658  rsi 00000000000036a8
+03-04 07:07:29.882 18784 18784 F DEBUG   :     rbp 000074a758609950  rsp 000074a6c08078b0  rip 000074aa02d1cb90
+03-04 07:07:29.882 18784 18784 F DEBUG   : 15 total frames
+03-04 07:07:29.882 18784 18784 F DEBUG   : backtrace:
+03-04 07:07:29.882 18784 18784 F DEBUG   :       #00 pc 000000000005cb90  /apex/com.android.runtime/lib64/bionic/libc.so (abort+192) (BuildId: eb58b4d427279994f00c0e1818477e4f)
+03-04 07:07:29.882 18784 18784 F DEBUG   :       #01 pc 000000000087e220  /apex/com.android.art/lib64/libart.so (art::Runtime::Abort(char const*)+96) (BuildId: 62338b1c62e3991543c9b8b8bae2b361)
+03-04 07:07:29.882 18784 18784 F DEBUG   :       #02 pc 0000000000015eea  /apex/com.android.art/lib64/libbase.so (android::base::SetAborter(std::__1::function<void (char const*)>&&)::$_0::__invoke(char const*)+58) (BuildId: 2d7df6e607a8928501c5363a393a3a89)
+03-04 07:07:29.882 18784 18784 F DEBUG   :       #03 pc 0000000000becdfb  /apex/com.android.btservices/lib64/libbluetooth_jni.so (bluetooth::log_internal::vlog(bluetooth::log_internal::Level, char const*, bluetooth::log_internal::source_location, fmt::v10::basic_string_view<char>, fmt::v10::basic_format_args<fmt::v10::basic_format_context<fmt::v10::appender, char>>)+1435) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-04 07:07:29.882 18784 18784 F DEBUG   :       #04 pc 00000000004545c6  /apex/com.android.btservices/lib64/libbluetooth_jni.so (void bluetooth::log::fatal<unsigned char>(fmt::v10::basic_format_string<char, fmt::v10::type_identity<unsigned char>::type>, unsigned char&&, bluetooth::log_internal::source_location)+70) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-04 07:07:29.882 18784 18784 F DEBUG   :       #05 pc 000000000044e8ea  /apex/com.android.btservices/lib64/libbluetooth_jni.so (bluetooth::hci::HciLayer::impl::on_hardware_error(bluetooth::hci::EventView)+218) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-04 07:07:29.882 18784 18784 F DEBUG   :       #06 pc 000000000044c604  /apex/com.android.btservices/lib64/libbluetooth_jni.so (bluetooth::hci::HciLayer::impl::on_hci_event(bluetooth::hci::EventView)+6420) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-04 07:07:29.882 18784 18784 F DEBUG   :       #07 pc 000000000044ce72  /apex/com.android.btservices/lib64/libbluetooth_jni.so (void base::internal::FunctorTraits<void (bluetooth::hci::HciLayer::impl::*)(bluetooth::hci::EventView), void>::Invoke<void (bluetooth::hci::HciLayer::impl::*)(bluetooth::hci::EventView), bluetooth::hci::HciLayer::impl*, bluetooth::hci::EventView>(void (bluetooth::hci::HciLayer::impl::*)(bluetooth::hci::EventView), bluetooth::hci::HciLayer::impl*&&, bluetooth::hci::EventView&&)+306) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-04 07:07:29.882 18784 18784 F DEBUG   :       #08 pc 000000000044cd23  /apex/com.android.btservices/lib64/libbluetooth_jni.so (base::internal::Invoker<base::internal::BindState<void (bluetooth::hci::HciLayer::impl::*)(bluetooth::hci::EventView), base::internal::UnretainedWrapper<bluetooth::hci::HciLayer::impl>, bluetooth::hci::EventView>, void ()>::RunOnce(base::internal::BindStateBase*)+51) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-04 07:07:29.882 18784 18784 F DEBUG   :       #09 pc 00000000003e04ad  /apex/com.android.btservices/lib64/libbluetooth_jni.so (bluetooth::os::Handler::handle_next_event()+317) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-04 07:07:29.882 18784 18784 F DEBUG   :       #10 pc 00000000003e1a18  /apex/com.android.btservices/lib64/libbluetooth_jni.so (bluetooth::os::Reactor::Run()+968) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-04 07:07:29.882 18784 18784 F DEBUG   :       #11 pc 00000000003e0d1a  /apex/com.android.btservices/lib64/libbluetooth_jni.so (bluetooth::os::Thread::run(bluetooth::os::Thread::Priority)+234) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-04 07:07:29.883 18784 18784 F DEBUG   :       #12 pc 00000000003e0f09  /apex/com.android.btservices/lib64/libbluetooth_jni.so (void* std::__1::__thread_proxy[abi:v180000]<std::__1::tuple<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct>>, void (bluetooth::os::Thread::*)(bluetooth::os::Thread::Priority), bluetooth::os::Thread*, bluetooth::os::Thread::Priority>>(void*)+57) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-04 07:07:29.883 18784 18784 F DEBUG   :       #13 pc 000000000006d62a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: eb58b4d427279994f00c0e1818477e4f)
+03-04 07:07:29.883 18784 18784 F DEBUG   :       #14 pc 0000000000060348  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+56) (BuildId: eb58b4d427279994f00c0e1818477e4f)
+03-05 03:15:43.151 18892 18984 F libc    : Fatal signal 6 (SIGABRT), code -1 (SI_QUEUE) in tid 18984 (bt_stack_manage), pid 18892 (droid.bluetooth)
+03-05 03:15:45.515 26131 26131 F DEBUG   : *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
+03-05 03:15:45.515 26131 26131 F DEBUG   : Build fingerprint: 'google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.005/12228598:user/release-keys'
+03-05 03:15:45.515 26131 26131 F DEBUG   : Revision: '0'
+03-05 03:15:45.515 26131 26131 F DEBUG   : ABI: 'x86_64'
+03-05 03:15:45.515 26131 26131 F DEBUG   : Timestamp: 2026-03-05 03:15:43.915295100+0000
+03-05 03:15:45.515 26131 26131 F DEBUG   : Process uptime: 0s
+03-05 03:15:45.515 26131 26131 F DEBUG   : Cmdline: com.google.android.bluetooth
+03-05 03:15:45.515 26131 26131 F DEBUG   : pid: 18892, tid: 18984, name: bt_stack_manage  >>> com.google.android.bluetooth <<<
+03-05 03:15:45.515 26131 26131 F DEBUG   : uid: 1002
+03-05 03:15:45.515 26131 26131 F DEBUG   : signal 6 (SIGABRT), code -1 (SI_QUEUE), fault addr --------
+03-05 03:15:45.515 26131 26131 F DEBUG   : Abort message: 'system/gd/hci/hci_layer.cc:478 on_hardware_error: Hardware Error Event with code 0x42'
+03-05 03:15:45.516 26131 26131 F DEBUG   :     rax 0000000000000000  rbx 000074a6c09ea8b8  rcx 000074aa02d1cb90  rdx 0000000000000006
+03-05 03:15:45.516 26131 26131 F DEBUG   :     r8  000074aa02daa380  r9  000074aa02daa380  r10 000074a6c09ea8c0  r11 0000000000000203
+03-05 03:15:45.516 26131 26131 F DEBUG   :     r12 000074a6c09eaa18  r13 0000000000000002  r14 00000000000049cc  r15 0000000000004a28
+03-05 03:15:45.516 26131 26131 F DEBUG   :     rdi 00000000000049cc  rsi 0000000000004a28
+03-05 03:15:45.516 26131 26131 F DEBUG   :     rbp 000074a758609950  rsp 000074a6c09ea8b0  rip 000074aa02d1cb90
+03-05 03:15:45.516 26131 26131 F DEBUG   : 15 total frames
+03-05 03:15:45.516 26131 26131 F DEBUG   : backtrace:
+03-05 03:15:45.516 26131 26131 F DEBUG   :       #00 pc 000000000005cb90  /apex/com.android.runtime/lib64/bionic/libc.so (abort+192) (BuildId: eb58b4d427279994f00c0e1818477e4f)
+03-05 03:15:45.516 26131 26131 F DEBUG   :       #01 pc 000000000087e220  /apex/com.android.art/lib64/libart.so (art::Runtime::Abort(char const*)+96) (BuildId: 62338b1c62e3991543c9b8b8bae2b361)
+03-05 03:15:45.516 26131 26131 F DEBUG   :       #02 pc 0000000000015eea  /apex/com.android.art/lib64/libbase.so (android::base::SetAborter(std::__1::function<void (char const*)>&&)::$_0::__invoke(char const*)+58) (BuildId: 2d7df6e607a8928501c5363a393a3a89)
+03-05 03:15:45.516 26131 26131 F DEBUG   :       #03 pc 0000000000becdfb  /apex/com.android.btservices/lib64/libbluetooth_jni.so (bluetooth::log_internal::vlog(bluetooth::log_internal::Level, char const*, bluetooth::log_internal::source_location, fmt::v10::basic_string_view<char>, fmt::v10::basic_format_args<fmt::v10::basic_format_context<fmt::v10::appender, char>>)+1435) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-05 03:15:45.516 26131 26131 F DEBUG   :       #04 pc 00000000004545c6  /apex/com.android.btservices/lib64/libbluetooth_jni.so (void bluetooth::log::fatal<unsigned char>(fmt::v10::basic_format_string<char, fmt::v10::type_identity<unsigned char>::type>, unsigned char&&, bluetooth::log_internal::source_location)+70) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-05 03:15:45.516 26131 26131 F DEBUG   :       #05 pc 000000000044e8ea  /apex/com.android.btservices/lib64/libbluetooth_jni.so (bluetooth::hci::HciLayer::impl::on_hardware_error(bluetooth::hci::EventView)+218) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-05 03:15:45.516 26131 26131 F DEBUG   :       #06 pc 000000000044c604  /apex/com.android.btservices/lib64/libbluetooth_jni.so (bluetooth::hci::HciLayer::impl::on_hci_event(bluetooth::hci::EventView)+6420) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-05 03:15:45.516 26131 26131 F DEBUG   :       #07 pc 000000000044ce72  /apex/com.android.btservices/lib64/libbluetooth_jni.so (void base::internal::FunctorTraits<void (bluetooth::hci::HciLayer::impl::*)(bluetooth::hci::EventView), void>::Invoke<void (bluetooth::hci::HciLayer::impl::*)(bluetooth::hci::EventView), bluetooth::hci::HciLayer::impl*, bluetooth::hci::EventView>(void (bluetooth::hci::HciLayer::impl::*)(bluetooth::hci::EventView), bluetooth::hci::HciLayer::impl*&&, bluetooth::hci::EventView&&)+306) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-05 03:15:45.516 26131 26131 F DEBUG   :       #08 pc 000000000044cd23  /apex/com.android.btservices/lib64/libbluetooth_jni.so (base::internal::Invoker<base::internal::BindState<void (bluetooth::hci::HciLayer::impl::*)(bluetooth::hci::EventView), base::internal::UnretainedWrapper<bluetooth::hci::HciLayer::impl>, bluetooth::hci::EventView>, void ()>::RunOnce(base::internal::BindStateBase*)+51) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-05 03:15:45.516 26131 26131 F DEBUG   :       #09 pc 00000000003e04ad  /apex/com.android.btservices/lib64/libbluetooth_jni.so (bluetooth::os::Handler::handle_next_event()+317) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-05 03:15:45.516 26131 26131 F DEBUG   :       #10 pc 00000000003e1a18  /apex/com.android.btservices/lib64/libbluetooth_jni.so (bluetooth::os::Reactor::Run()+968) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-05 03:15:45.516 26131 26131 F DEBUG   :       #11 pc 00000000003e0d1a  /apex/com.android.btservices/lib64/libbluetooth_jni.so (bluetooth::os::Thread::run(bluetooth::os::Thread::Priority)+234) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-05 03:15:45.516 26131 26131 F DEBUG   :       #12 pc 00000000003e0f09  /apex/com.android.btservices/lib64/libbluetooth_jni.so (void* std::__1::__thread_proxy[abi:v180000]<std::__1::tuple<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct>>, void (bluetooth::os::Thread::*)(bluetooth::os::Thread::Priority), bluetooth::os::Thread*, bluetooth::os::Thread::Priority>>(void*)+57) (BuildId: eb7130ff96857cf56436acf126eae2a1)
+03-05 03:15:45.516 26131 26131 F DEBUG   :       #13 pc 000000000006d62a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: eb58b4d427279994f00c0e1818477e4f)
+03-05 03:15:45.516 26131 26131 F DEBUG   :       #14 pc 0000000000060348  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+56) (BuildId: eb58b4d427279994f00c0e1818477e4f)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: FATAL EXCEPTION: main
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: Process: com.lifehubfin, PID: 29231
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: java.lang.RuntimeException: Unable to start activity ComponentInfo{com.lifehubfin/com.lifehubfin.MainActivity}: java.lang.RuntimeException: You should not use ReactNativeHost directly in the New Architecture
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4048)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4235)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:112)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:174)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:109)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:81)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2636)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:107)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:232)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:317)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at android.app.ActivityThread.main(ActivityThread.java:8705)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:580)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:886)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: Caused by: java.lang.RuntimeException: You should not use ReactNativeHost directly in the New Architecture
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at com.facebook.react.ReactApplication.getReactNativeHost(ReactApplication.kt:20)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at com.facebook.react.ReactActivityDelegate.getReactNativeHost(ReactActivityDelegate.java:98)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at com.facebook.react.ReactActivity.getReactNativeHost(ReactActivity.java:168)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at com.lifehubfin.MainActivity.onCreate(MainActivity.kt:41)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:9002)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:8980)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1526)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4030)
+03-05 06:04:27.325 29231 29231 E AndroidRuntime: 	... 13 more
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: FATAL EXCEPTION: main
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: Process: com.lifehubfin, PID: 29306
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: java.lang.RuntimeException: Unable to start activity ComponentInfo{com.lifehubfin/com.lifehubfin.MainActivity}: java.lang.RuntimeException: You should not use ReactNativeHost directly in the New Architecture
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4048)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4235)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:112)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:174)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:109)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:81)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2636)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:107)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:232)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:317)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at android.app.ActivityThread.main(ActivityThread.java:8705)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:580)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:886)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: Caused by: java.lang.RuntimeException: You should not use ReactNativeHost directly in the New Architecture
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at com.facebook.react.ReactApplication.getReactNativeHost(ReactApplication.kt:20)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at com.facebook.react.ReactActivityDelegate.getReactNativeHost(ReactActivityDelegate.java:98)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at com.facebook.react.ReactActivity.getReactNativeHost(ReactActivity.java:168)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at com.lifehubfin.MainActivity.onCreate(MainActivity.kt:41)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:9002)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:8980)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1526)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4030)
+03-05 06:04:32.205 29306 29306 E AndroidRuntime: 	... 13 more
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: FATAL EXCEPTION: main
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: Process: com.lifehubfin, PID: 29383
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: java.lang.RuntimeException: Unable to start activity ComponentInfo{com.lifehubfin/com.lifehubfin.MainActivity}: java.lang.RuntimeException: You should not use ReactNativeHost directly in the New Architecture
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4048)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4235)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:112)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:174)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:109)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:81)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2636)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:107)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:232)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:317)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at android.app.ActivityThread.main(ActivityThread.java:8705)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:580)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:886)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: Caused by: java.lang.RuntimeException: You should not use ReactNativeHost directly in the New Architecture
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at com.facebook.react.ReactApplication.getReactNativeHost(ReactApplication.kt:20)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at com.facebook.react.ReactActivityDelegate.getReactNativeHost(ReactActivityDelegate.java:98)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at com.facebook.react.ReactActivity.getReactNativeHost(ReactActivity.java:168)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at com.lifehubfin.MainActivity.onCreate(MainActivity.kt:41)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:9002)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:8980)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1526)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4030)
+03-05 06:04:37.900 29383 29383 E AndroidRuntime: 	... 13 more
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: FATAL EXCEPTION: main
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: Process: com.lifehubfin, PID: 29416
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: java.lang.RuntimeException: Unable to start activity ComponentInfo{com.lifehubfin/com.lifehubfin.MainActivity}: java.lang.RuntimeException: You should not use ReactNativeHost directly in the New Architecture
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4048)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4235)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:112)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:174)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:109)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:81)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2636)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:107)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:232)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:317)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at android.app.ActivityThread.main(ActivityThread.java:8705)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:580)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:886)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: Caused by: java.lang.RuntimeException: You should not use ReactNativeHost directly in the New Architecture
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at com.facebook.react.ReactApplication.getReactNativeHost(ReactApplication.kt:20)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at com.facebook.react.ReactActivityDelegate.getReactNativeHost(ReactActivityDelegate.java:98)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at com.facebook.react.ReactActivity.getReactNativeHost(ReactActivity.java:168)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at com.lifehubfin.MainActivity.onCreate(MainActivity.kt:41)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:9002)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:8980)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1526)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4030)
+03-05 06:04:39.986 29416 29416 E AndroidRuntime: 	... 13 more

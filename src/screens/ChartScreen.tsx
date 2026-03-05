@@ -18,11 +18,15 @@ import {
   getTagStatistics, TagStatItem,
   getAccountBalances, AccountBalance,
 } from '../services/statistics';
+import {
+  getTransactionDetails,
+  DailyGroup,
+} from '../services/transaction';
 import IconifyIcon from '../components/IconifyIcon';
 import MonthPicker, {createQuickOptions} from '../components/MonthPicker';
 
 const SW = Dimensions.get('window').width;
-type Tab = 'overview' | 'category' | 'asset';
+type Tab = 'overview' | 'category' | 'asset' | 'calendar';
 
 const RANK_COLORS = ['#FF6B6B', '#FFA94D', '#FFD43B', '#69DB7C', '#74C0FC', '#B197FC', '#E599F7', '#CED4DA'];
 
@@ -47,6 +51,8 @@ const ChartScreen = () => {
   const [liabilities, setLiabilities] = useState<AccountBalance[]>([]);
   const [liabilityTotal, setLiabilityTotal] = useState(0);
   const [rankType, setRankType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
+  const [dailyGroups, setDailyGroups] = useState<DailyGroup[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1;
@@ -62,7 +68,15 @@ const ChartScreen = () => {
     if (!bookId) return;
     setLoading(true);
     try {
-      const [ms, yt, expR, incR, ts, ab, lb] = await Promise.all([
+      const {start, end} = (() => {
+        const lastDay = new Date(year, month, 0).getDate();
+        return {
+          start: `${year}-${String(month).padStart(2, '0')}-01`,
+          end: `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
+        };
+      })();
+
+      const [ms, yt, expR, incR, ts, ab, lb, td] = await Promise.all([
         getMonthlyStatistics(bookId, year, month).catch(() => null),
         getYearlyTrend(bookId, year).catch(() => ({year, months: []} as any)),
         getCategoryRank(bookId, 'EXPENSE', year, month).catch(() => ({total: 0, categories: []} as any)),
@@ -70,6 +84,7 @@ const ChartScreen = () => {
         getTagStatistics(bookId, year, month).catch(() => ({total: 0, tags: []} as any)),
         getAccountBalances(bookId, 'ASSET').catch(() => ({total: 0, accounts: []} as any)),
         getAccountBalances(bookId, 'LIABILITY').catch(() => ({total: 0, accounts: []} as any)),
+        getTransactionDetails({bookId, startDate: start, endDate: end, pageNum: 1, pageSize: 1000}).catch(() => ({dailyGroups: []} as any)),
       ]);
       setMonthly(ms);
       setYearTrend(yt?.months || []);
@@ -78,6 +93,7 @@ const ChartScreen = () => {
       setTagStats(ts?.tags || []); setTagTotal(ts?.total || 0);
       setAssets(ab?.accounts || []); setAssetTotal(ab?.total || 0);
       setLiabilities(lb?.accounts || []); setLiabilityTotal(lb?.total || 0);
+      setDailyGroups(td?.dailyGroups || []);
     } catch {}
     finally { setLoading(false); }
   }, [bookId, year, month]);
@@ -145,8 +161,8 @@ const ChartScreen = () => {
             <View style={s.legendItem}><View style={[s.legendDot, {backgroundColor: '#FF6B6B'}]} /><Text style={s.legendText}>支出</Text></View>
           </View>
           {yearTrend.length > 0 ? yearTrend.map(m => {
-            const incW = Math.max((m.income / maxBar) * (SW - 120), 2);
-            const expW = Math.max((m.expense / maxBar) * (SW - 120), 2);
+            const incW = Math.max((m.income / maxBar) * (SW - 180), 2);
+            const expW = Math.max((m.expense / maxBar) * (SW - 180), 2);
             const isCurrent = m.month === month;
             return (
               <View key={m.month} style={[s.trendRow, isCurrent && s.trendRowCurrent]}>
@@ -154,6 +170,10 @@ const ChartScreen = () => {
                 <View style={s.trendBars}>
                   {m.income > 0 && <View style={[s.trendBarInc, {width: incW}]} />}
                   {m.expense > 0 && <View style={[s.trendBarExp, {width: expW}]} />}
+                </View>
+                <View style={s.trendValues}>
+                  {m.income > 0 && <Text style={[s.trendValueInc, isCurrent && s.trendValueCurrent]}>¥{m.income.toFixed(0)}</Text>}
+                  {m.expense > 0 && <Text style={[s.trendValueExp, isCurrent && s.trendValueCurrent]}>¥{m.expense.toFixed(0)}</Text>}
                 </View>
               </View>
             );
@@ -310,6 +330,200 @@ const ChartScreen = () => {
     );
   };
 
+  // ── 日历 Tab ──
+  const renderCalendar = () => {
+    // 获取当月日历
+    const firstDay = new Date(year, month - 1, 1);
+    const lastDay = new Date(year, month, 0);
+    const daysInMonth = lastDay.getDate();
+    const startDayOfWeek = firstDay.getDay(); // 0=周日, 1=周一, ...
+
+    // 创建每日数据映射
+    const dailyMap = new Map<string, {income: number; expense: number; count: number}>();
+    dailyGroups.forEach(g => {
+      dailyMap.set(g.date, {
+        income: g.dailyIncome,
+        expense: g.dailyExpense,
+        count: g.transactions.length,
+      });
+    });
+
+    // 计算日历网格 - 按周分组
+    const calendarWeeks: Array<Array<Date | null>> = [];
+    let currentWeek: Array<Date | null> = [];
+
+    // 填充月初空白 - getDay() 返回 0-6，0是周日
+    const emptySlots = startDayOfWeek;
+    for (let i = 0; i < emptySlots; i++) {
+      currentWeek.push(null);
+    }
+
+    // 填充日期
+    for (let day = 1; day <= daysInMonth; day++) {
+      currentWeek.push(new Date(year, month - 1, day));
+      if (currentWeek.length === 7) {
+        calendarWeeks.push(currentWeek);
+        currentWeek = [];
+      }
+    }
+
+    // 填充月末空白
+    if (currentWeek.length > 0) {
+      while (currentWeek.length < 7) {
+        currentWeek.push(null);
+      }
+      calendarWeeks.push(currentWeek);
+    }
+
+    const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
+
+    return (
+      <>
+        {/* 月度汇总 */}
+        <View style={s.calendarSummary}>
+          <View style={s.summaryItem}>
+            <Text style={s.summaryLabel}>总收入</Text>
+            <Text style={s.summaryInc}>¥{(monthly?.totalIncome || 0).toFixed(2)}</Text>
+          </View>
+          <View style={s.summaryDivider} />
+          <View style={s.summaryItem}>
+            <Text style={s.summaryLabel}>总支出</Text>
+            <Text style={s.summaryExp}>¥{(monthly?.totalExpense || 0).toFixed(2)}</Text>
+          </View>
+        </View>
+
+        {/* 日历 */}
+        <View style={s.card}>
+          <View style={s.calendarHeader}>
+            {WEEKDAYS.map((d, i) => (
+              <View key={i} style={s.weekdayCell}>
+                <Text style={s.weekdayText}>{d}</Text>
+              </View>
+            ))}
+          </View>
+          {calendarWeeks.map((week, weekIndex) => (
+            <View key={weekIndex} style={s.calendarWeek}>
+              {week.map((date, dayIndex) => {
+                if (!date) {
+                  return <View key={`empty_${weekIndex}_${dayIndex}`} style={s.calendarDayEmpty} />;
+                }
+
+                const day = date.getDate();
+                const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const data = dailyMap.get(dateStr);
+                const isSelected = selectedDate === dateStr;
+                const isToday = new Date().toDateString() === date.toDateString();
+
+                // 计算样式：选中状态优先，今天状态作为辅助
+                const dayStyle = [
+                  s.calendarDay,
+                  isSelected && s.calendarDaySelected,
+                  // 如果今天但未选中，显示绿色边框
+                  isToday && !isSelected && s.calendarDayToday,
+                ];
+
+                const numberStyle = [
+                  s.dayNumber,
+                  isToday && s.dayNumberToday,
+                  isSelected && s.dayNumberSelected,
+                ];
+
+                return (
+                  <TouchableOpacity
+                    key={`${weekIndex}_${day}`}
+                    style={dayStyle}
+                    onPress={() => setSelectedDate(isSelected ? null : dateStr)}
+                    activeOpacity={0.7}>
+                    <Text style={numberStyle}>{day}</Text>
+                    {data && data.count > 0 ? (
+                      <View style={s.dayAmounts}>
+                        {data.income > 0 && (
+                          <Text style={[s.dayIncomeAmount, isSelected && s.dayAmountTextSelected]} numberOfLines={1}>
+                            ¥{data.income >= 1000 ? (data.income / 1000).toFixed(1) + 'k' : data.income.toFixed(0)}
+                          </Text>
+                        )}
+                        {data.expense > 0 && (
+                          <Text style={[s.dayExpenseAmount, isSelected && s.dayAmountTextSelected]} numberOfLines={1}>
+                            ¥{data.expense >= 1000 ? (data.expense / 1000).toFixed(1) + 'k' : data.expense.toFixed(0)}
+                          </Text>
+                        )}
+                      </View>
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ))}
+
+          {/* 图例 */}
+          <View style={s.calendarLegend}>
+            <View style={s.legendItem}>
+              <View style={[s.legendDot, {backgroundColor: '#51CF66'}]} />
+              <Text style={s.legendText}>收入</Text>
+            </View>
+            <View style={s.legendItem}>
+              <View style={[s.legendDot, {backgroundColor: '#FF6B6B'}]} />
+              <Text style={s.legendText}>支出</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* 选中日期详情 */}
+        {selectedDate && dailyMap.has(selectedDate) && (
+          <View style={s.card}>
+            <Text style={s.cardTitle}>📅 {selectedDate} 详情</Text>
+            {(() => {
+              const data = dailyMap.get(selectedDate)!;
+              const dayGroup = dailyGroups.find(g => g.date === selectedDate);
+              return (
+                <>
+                  <View style={s.dateDetailRow}>
+                    <Text style={s.dateDetailLabel}>收入</Text>
+                    <Text style={s.dateDetailInc}>¥{data.income.toFixed(2)}</Text>
+                  </View>
+                  <View style={s.dateDetailRow}>
+                    <Text style={s.dateDetailLabel}>支出</Text>
+                    <Text style={s.dateDetailExp}>¥{data.expense.toFixed(2)}</Text>
+                  </View>
+                  <View style={s.dateDetailRow}>
+                    <Text style={s.dateDetailLabel}>结余</Text>
+                    <Text style={[s.dateDetailBal, (data.income - data.expense) < 0 && {color: '#FF6B6B'}]}>
+                      ¥{(data.income - data.expense).toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={s.dateDetailRow}>
+                    <Text style={s.dateDetailLabel}>笔数</Text>
+                    <Text style={s.dateDetailCount}>{data.count} 笔</Text>
+                  </View>
+
+                  {/* 交易列表 */}
+                  {dayGroup && dayGroup.transactions.length > 0 && (
+                    <View style={s.transactionList}>
+                      {dayGroup.transactions.map((t, i) => (
+                        <View key={t.transId || i} style={s.transactionItem}>
+                          <View style={s.transIcon}>
+                            <IconifyIcon icon={t.categoryIcon} size={16} color="#3B7DD8" fallback="📌" />
+                          </View>
+                          <View style={s.transInfo}>
+                            <Text style={s.transCategory}>{t.categoryName}</Text>
+                            <Text style={s.transAccount}>{t.targetAccountName}</Text>
+                          </View>
+                          <Text style={[s.transAmount, t.transType === 'EXPENSE' ? s.transAmountExp : s.transAmountInc]}>
+                            {t.transType === 'EXPENSE' ? '-' : '+'}¥{t.displayAmount.toFixed(2)}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </>
+              );
+            })()}
+          </View>
+        )}
+      </>
+    );
+  };
+
   // ── 主渲染 ──
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -333,6 +547,7 @@ const ChartScreen = () => {
           {([
             {key: 'overview' as Tab, label: '概览', icon: '📊'},
             {key: 'category' as Tab, label: '分类', icon: '🏷️'},
+            {key: 'calendar' as Tab, label: '日历', icon: '📅'},
             {key: 'asset' as Tab, label: '资产', icon: '🏦'},
           ]).map(t => (
             <TouchableOpacity
@@ -350,7 +565,7 @@ const ChartScreen = () => {
       <ScrollView style={s.body} contentContainerStyle={s.bodyContent} showsVerticalScrollIndicator={false}>
         {loading ? (
           <View style={s.emptyWrap}><ActivityIndicator size="large" color="#3B7DD8" /></View>
-        ) : tab === 'overview' ? renderOverview() : tab === 'category' ? renderCategory() : renderAsset()}
+        ) : tab === 'overview' ? renderOverview() : tab === 'category' ? renderCategory() : tab === 'calendar' ? renderCalendar() : renderAsset()}
         <View style={{height: 30}} />
       </ScrollView>
 
@@ -423,9 +638,13 @@ const s = StyleSheet.create({
   trendRowCurrent: {backgroundColor: '#F0F6FF', borderRadius: 8, marginHorizontal: -8, paddingHorizontal: 8},
   trendMonth: {width: 32, fontSize: 12, color: '#999', fontWeight: '500'},
   trendMonthCurrent: {color: '#3B7DD8', fontWeight: '700'},
-  trendBars: {flex: 1, gap: 2},
+  trendBars: {flex: 1, gap: 2, marginRight: 8},
   trendBarInc: {height: 5, borderRadius: 3, backgroundColor: '#51CF66'},
   trendBarExp: {height: 5, borderRadius: 3, backgroundColor: '#FF6B6B'},
+  trendValues: {width: 70, alignItems: 'flex-end', gap: 2},
+  trendValueInc: {fontSize: 11, fontWeight: '600', color: '#51CF66'},
+  trendValueExp: {fontSize: 11, fontWeight: '600', color: '#FF6B6B'},
+  trendValueCurrent: {fontWeight: '800'},
 
   // Tags
   tagRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 10},
@@ -474,6 +693,161 @@ const s = StyleSheet.create({
   balanceName: {flex: 1, fontSize: 14, fontWeight: '500', color: '#333'},
   balanceAmount: {fontSize: 15, fontWeight: '700', color: '#1A1A2E'},
   listDivider: {height: StyleSheet.hairlineWidth, backgroundColor: '#F0F2F5', marginLeft: 48},
+
+  // Calendar - 优化版本
+  calendarSummary: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+  },
+  summaryItem: {flex: 1, alignItems: 'center'},
+  summaryDivider: {width: 1, height: 32, backgroundColor: '#F0F2F5'},
+  summaryLabel: {fontSize: 11, color: '#9CA3AF', marginBottom: 5, letterSpacing: 0.3},
+  summaryInc: {fontSize: 17, fontWeight: '800', color: '#10B981'},
+  summaryExp: {fontSize: 17, fontWeight: '800', color: '#EF4444'},
+
+  calendarHeader: {flexDirection: 'row', marginBottom: 10, paddingHorizontal: 4},
+  weekdayCell: {flex: 1, height: 28, alignItems: 'center', justifyContent: 'center'},
+  weekdayText: {fontSize: 13, fontWeight: '600', color: '#9CA3AF'},
+  calendarWeek: {flexDirection: 'row', marginBottom: 8, paddingHorizontal: 4},
+  calendarDayEmpty: {flex: 1, height: 72},
+  calendarDay: {
+    flex: 1,
+    height: 72,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    margin: 2,
+  },
+  // 选中状态：蓝色边框 + 浅蓝色背景，保持内容可读性
+  calendarDaySelected: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#3B7DD8',
+    shadowColor: '#3B7DD8',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  // 今天状态：绿色边框（可与选中状态叠加）
+  calendarDayToday: {
+    borderColor: '#10B981',
+  },
+  // 日期数字样式
+  dayNumber: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 5,
+  },
+  // 今天的日期数字颜色
+  dayNumberToday: {
+    color: '#059669',
+  },
+  // 选中的日期数字颜色
+  dayNumberSelected: {
+    color: '#3B7DD8',
+    fontWeight: '800',
+  },
+  dayAmounts: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  // 收入金额标签 - 保持颜色语义
+  dayIncomeAmount: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#059669',
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 5,
+    minWidth: 32,
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+  // 支出金额标签 - 保持颜色语义
+  dayExpenseAmount: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#DC2626',
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 5,
+    minWidth: 32,
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+  // 选中状态下金额标签保持原样，不改变颜色以保留语义
+  dayAmountTextSelected: {},
+  dayEmptyAmount: {fontSize: 8, color: '#CBD5E0'},
+  calendarLegend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 18,
+    marginTop: 12,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+
+  dateDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    backgroundColor: '#FAFAFA',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    marginBottom: 6,
+  },
+  dateDetailLabel: {fontSize: 13, color: '#718096', fontWeight: '600'},
+  dateDetailInc: {fontSize: 16, fontWeight: '800', color: '#10B981'},
+  dateDetailExp: {fontSize: 16, fontWeight: '800', color: '#EF4444'},
+  dateDetailBal: {fontSize: 16, fontWeight: '800', color: '#3B82F6'},
+  dateDetailCount: {fontSize: 13, color: '#4B5563', fontWeight: '600'},
+
+  transactionList: {
+    marginTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F2F5',
+    paddingTop: 16,
+  },
+  transactionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    backgroundColor: '#FAFAFA',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+  },
+  transIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#EBF8FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  transInfo: {flex: 1, marginLeft: 10},
+  transCategory: {fontSize: 14, fontWeight: '700', color: '#1F2937'},
+  transAccount: {fontSize: 11, color: '#9CA3AF', marginTop: 2},
+  transAmount: {fontSize: 15, fontWeight: '800'},
+  transAmountInc: {color: '#10B981'},
+  transAmountExp: {color: '#EF4444'},
 
   // Empty
   emptyWrap: {alignItems: 'center', justifyContent: 'center', paddingVertical: 60},

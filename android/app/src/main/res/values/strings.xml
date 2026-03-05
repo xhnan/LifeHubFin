@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">LifeHubFin</string>
+
+    <!-- 快捷方式字符串 -->
+    <string name="shortcut_add_short">记一笔</string>
+    <string name="shortcut_add_long">记一笔</string>
 </resources>

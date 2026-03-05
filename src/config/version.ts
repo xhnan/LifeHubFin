@@ -1,4 +1,4 @@
-export const APP_VERSION = '1.0.35';
-export const APP_VERSION_CODE = 10035;
+export const APP_VERSION = '1.1.0';
+export const APP_VERSION_CODE = 10100;
 export const MIN_SUPPORTED_VERSION = '1.0.0';
-export const BUILD_DATE = '2026-03-03';
+export const BUILD_DATE = '2026-03-05';

@@ -104,7 +104,7 @@ const LoginScreen = ({onLoginSuccess}: LoginScreenProps) => {
 
 const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: '#F2F4F7'},
-  container: {flex: 1, justifyContent: 'center', paddingHorizontal: 32},
+  container: {flex: 1, justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 40},
   logoArea: {alignItems: 'center', marginBottom: 48},
   logoIcon: {fontSize: 56},
   logoTitle: {
@@ -125,15 +125,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 14,
     paddingHorizontal: 16,
-    height: 52,
+    height: 56,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.06,
     shadowRadius: 4,
   },
-  inputIcon: {fontSize: 18, marginRight: 10},
-  input: {flex: 1, fontSize: 16, color: '#333'},
+  inputIcon: {fontSize: 20, marginRight: 10},
+  input: {flex: 1, fontSize: 16, color: '#333', paddingVertical: 4},
   loginBtn: {
     backgroundColor: '#3B7DD8',
     borderRadius: 14,

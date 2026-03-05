@@ -4,6 +4,7 @@ import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { FinanceStoreProvider } from './src/store/FinanceStore';
 import SplashScreen from 'react-native-splash-screen';
 
 import DetailScreen from './src/screens/DetailScreen';
@@ -16,12 +17,14 @@ import LoginScreen from './src/screens/LoginScreen';
 import ReceiptScreen from './src/screens/ReceiptScreen';
 import TransactionDetailScreen from './src/screens/TransactionDetailScreen';
 import { getToken, removeToken } from './src/services/auth';
-import { registerTokenExpiredCallback } from './src/services/navigationService';
+import {
+  registerTokenExpiredCallback,
+} from './src/services/navigationService';
 import { UpdateModal } from './src/components/UpdateModal';
 import { checkForUpdates } from './src/services/versionCheck';
 import type { VersionCheckResponse } from './src/types/version';
-import NativeImageHandler, {type EmitterSubscription} from './src/services/nativeImageHandler';
-import {Platform} from 'react-native';
+import NativeImageHandler, { type EmitterSubscription } from './src/services/nativeImageHandler';
+import { Platform } from 'react-native';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -125,6 +128,39 @@ const App = () => {
       // Make navigation available globally for the image handler
       (global as any).navigationRef = navigationRef;
     }
+  }, [token]);
+
+  // Handle Android App Shortcuts via Linking API (Cold start & Foreground)
+  React.useEffect(() => {
+    import('react-native').then(({ Linking }) => {
+      // Handle the case where the app was already running in the background and is opened by the shortcut
+      const handleUrl = ({ url }: { url: string }) => {
+        if (url === 'lifehubfin://add' || url === 'add') {
+          if (navigationRef.current?.isReady()) {
+            navigationRef.current.navigate('记账');
+          }
+        }
+      };
+      const subscription = Linking.addEventListener('url', handleUrl);
+
+      // Handle the case where the app is launched cold from the shortcut
+      Linking.getInitialURL().then(url => {
+        if (url === 'lifehubfin://add' || url === 'add') {
+          // Wait for navigation Ref if it's not ready
+          const interval = setInterval(() => {
+            if (navigationRef.current?.isReady()) {
+              clearInterval(interval);
+              navigationRef.current.navigate('记账');
+            }
+          }, 50);
+          setTimeout(() => clearInterval(interval), 3000);
+        }
+      });
+
+      return () => {
+        subscription.remove();
+      };
+    });
   }, []);
 
   // Listen for shared images (Android only)
@@ -222,49 +258,51 @@ const App = () => {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer ref={navigationRef}>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="主页" component={TabNavigator} />
-          <Stack.Screen
-            name="记账"
-            component={AddScreen}
-            options={{
-              presentation: 'modal',
-              animation: 'slide_from_bottom',
-            }}
-          />
-          <Stack.Screen
-            name="账本管理"
-            component={BookManageScreen}
-            options={{
-              headerShown: false,
-              animation: 'slide_from_right',
-            }}
-          />
-          <Stack.Screen
-            name="拍照记账"
-            component={ReceiptScreen}
-            options={{
-              headerShown: false,
-              animation: 'slide_from_bottom',
-            }}
-          />
-          <Stack.Screen
-            name="账单详情"
-            component={TransactionDetailScreen}
-            options={{
-              headerShown: false,
-              presentation: 'transparentModal',
-              animation: 'fade',
-            }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
-      <UpdateModal
-        visible={showUpdateModal}
-        versionInfo={versionInfo}
-        onClose={() => setShowUpdateModal(false)}
-      />
+      <FinanceStoreProvider>
+        <NavigationContainer ref={navigationRef}>
+          <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="主页" component={TabNavigator} />
+            <Stack.Screen
+              name="记账"
+              component={AddScreen}
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="账本管理"
+              component={BookManageScreen}
+              options={{
+                headerShown: false,
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="拍照记账"
+              component={ReceiptScreen}
+              options={{
+                headerShown: false,
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="账单详情"
+              component={TransactionDetailScreen}
+              options={{
+                headerShown: false,
+                presentation: 'transparentModal',
+                animation: 'fade',
+              }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+        <UpdateModal
+          visible={showUpdateModal}
+          versionInfo={versionInfo}
+          onClose={() => setShowUpdateModal(false)}
+        />
+      </FinanceStoreProvider>
     </SafeAreaProvider>
   );
 };
