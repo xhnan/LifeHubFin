@@ -12,4 +12,14 @@
         <item name="android:navigationBarColor">#1A237E</item>
     </style>
 
+    <!-- Translucent theme for share receiver -->
+    <style name="Theme.Translucent.NoTitleBar" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
 </resources>

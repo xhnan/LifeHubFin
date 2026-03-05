@@ -14,19 +14,27 @@ import {
   Platform,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {launchCamera, launchImageLibrary, ImagePickerResponse} from 'react-native-image-picker';
+import {launchCamera, launchImageLibrary, ImagePickerResponse, Asset} from 'react-native-image-picker';
 import {getMyBooks, Book} from '../services/book';
 import {getAccounts, Account} from '../services/account';
 import {createTransaction, EntryRequest} from '../services/transaction';
 import IconifyIcon from '../components/IconifyIcon';
 import DateTimePickerComponent from '../components/DateTimePicker';
+import NativeImageHandler from '../services/nativeImageHandler';
+import type { RouteProp } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
+
+type ReceiptScreenRouteProp = RouteProp<{ params: { initialImageUri?: string } }, 'params'>;
+type ReceiptScreenNavigationProp = StackNavigationProp<any>;
 
 const ACCOUNT_TYPE_LABEL: Record<string, string> = {
   EXPENSE: '支出', INCOME: '收入', ASSET: '资产', LIABILITY: '负债', EQUITY: '权益',
 };
 
-const ReceiptScreen = ({navigation}: any) => {
-  const [imageUri, setImageUri] = useState<string | null>(null);
+const ReceiptScreen = ({route, navigation}: any) => {
+  const initialImageUri = route.params?.initialImageUri as string | undefined;
+
+  const [imageUri, setImageUri] = useState<string | null>(initialImageUri || null);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [transDate, setTransDate] = useState(() => {
@@ -63,6 +71,17 @@ const ReceiptScreen = ({navigation}: any) => {
         .catch(() => setAccounts([]));
     }
   }, [selectedBookId]);
+
+  // Clear shared image after component unmounts (if it came from share sheet)
+  useEffect(() => {
+    return () => {
+      if (initialImageUri && Platform.OS === 'android') {
+        NativeImageHandler.clearSharedImage().catch(err => {
+          console.warn('Failed to clear shared image:', err);
+        });
+      }
+    };
+  }, [initialImageUri]);
 
   const leafAccounts = useCallback(
     (types: string[]) => {

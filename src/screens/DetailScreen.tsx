@@ -147,17 +147,15 @@ const DetailScreen = () => {
       : `+${Math.abs(item.displayAmount).toFixed(2)}`;
 
     return (
-      <View style={styles.transItem}>
+      <TouchableOpacity
+        style={styles.transItem}
+        onPress={() => navigation.navigate('账单详情', {transaction: item})}
+        activeOpacity={0.7}>
         <View style={styles.transIconWrap}>
           <IconifyIcon icon={item.categoryIcon} size={24} color="#3B7DD8" fallback="📌" />
         </View>
         <View style={styles.transInfo}>
           <Text style={styles.transCategory}>{item.categoryName}</Text>
-          {item.description ? (
-            <Text style={styles.transDesc} numberOfLines={1}>
-              {item.description}
-            </Text>
-          ) : null}
           <View style={styles.transMetaRow}>
             <View style={styles.transAccountRow}>
               <IconifyIcon icon={item.targetAccountIcon} size={12} color="#aaa" fallback="💳" />
@@ -169,7 +167,7 @@ const DetailScreen = () => {
         <Text style={[styles.transAmount, isExpense ? styles.amountExp : styles.amountInc]}>
           {amountStr}
         </Text>
-      </View>
+      </TouchableOpacity>
     );
   };
 

@@ -5,7 +5,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import SplashScreen from 'react-native-splash-screen';
-import AnimatedSplash from './src/components/AnimatedSplash';
 
 import DetailScreen from './src/screens/DetailScreen';
 import ChartScreen from './src/screens/ChartScreen';
@@ -15,11 +14,14 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import BookManageScreen from './src/screens/BookManageScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import ReceiptScreen from './src/screens/ReceiptScreen';
+import TransactionDetailScreen from './src/screens/TransactionDetailScreen';
 import { getToken, removeToken } from './src/services/auth';
 import { registerTokenExpiredCallback } from './src/services/navigationService';
 import { UpdateModal } from './src/components/UpdateModal';
 import { checkForUpdates } from './src/services/versionCheck';
 import type { VersionCheckResponse } from './src/types/version';
+import NativeImageHandler, {type EmitterSubscription} from './src/services/nativeImageHandler';
+import {Platform} from 'react-native';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -112,22 +114,66 @@ const TabNavigator = () => (
 );
 
 const App = () => {
+  const navigationRef = React.useRef<any>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [checking, setChecking] = useState(true);
   const [versionInfo, setVersionInfo] = useState<VersionCheckResponse | null>(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
+
+  // Set up navigation ref for global access
+  React.useEffect(() => {
+    if (navigationRef.current) {
+      // Make navigation available globally for the image handler
+      (global as any).navigationRef = navigationRef;
+    }
+  }, []);
+
+  // Listen for shared images (Android only)
+  React.useEffect(() => {
+    if (Platform.OS !== 'android' || !token) {
+      return;
+    }
+
+    let subscription: EmitterSubscription | null = null;
+
+    const setupListener = async () => {
+      // First check if there's a pending shared image
+      const lastImage = await NativeImageHandler.getLastSharedImage();
+      if (lastImage && navigationRef.current) {
+        navigationRef.current.navigate('拍照记账', {
+          initialImageUri: lastImage,
+        });
+        await NativeImageHandler.clearSharedImage();
+      }
+
+      // Set up listener for future shares
+      subscription = NativeImageHandler.addListener((imagePath: string) => {
+        if (navigationRef.current) {
+          navigationRef.current.navigate('拍照记账', {
+            initialImageUri: imagePath,
+          });
+        }
+      });
+    };
+
+    setupListener();
+
+    return () => {
+      subscription?.remove();
+    };
+  }, [token]);
 
   useEffect(() => {
+    // 立即隐藏启动屏，让用户看到界面
+    SplashScreen.hide();
+
     // 注册 Token 过期回调
     registerTokenExpiredCallback(() => {
       setToken(null);
     });
 
-    // 检查本地是否有 Token
+    // 异步检查本地是否有 Token，不阻塞界面显示
     getToken().then(t => {
       setToken(t);
-      setChecking(false);
 
       // 如果已登录，检查版本更新
       if (t) {
@@ -138,9 +184,6 @@ const App = () => {
           }
         });
       }
-
-      // 隐藏启动页
-      SplashScreen.hide();
     });
   }, []);
 
@@ -169,33 +212,17 @@ const App = () => {
     setToken(null);
   }, []);
 
-  const handleSplashAnimationEnd = useCallback(() => {
-    setShowAnimatedSplash(false);
-  }, []);
-
-  if (checking) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B7DD8" />
-      </View>
-    );
-  }
-
   if (!token) {
     return (
       <SafeAreaProvider>
         <LoginScreen onLoginSuccess={handleLoginSuccess} />
-        <AnimatedSplash
-          isVisible={showAnimatedSplash}
-          onAnimationEnd={handleSplashAnimationEnd}
-        />
       </SafeAreaProvider>
     );
   }
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="主页" component={TabNavigator} />
           <Stack.Screen
@@ -222,6 +249,15 @@ const App = () => {
               animation: 'slide_from_bottom',
             }}
           />
+          <Stack.Screen
+            name="账单详情"
+            component={TransactionDetailScreen}
+            options={{
+              headerShown: false,
+              presentation: 'transparentModal',
+              animation: 'fade',
+            }}
+          />
         </Stack.Navigator>
       </NavigationContainer>
       <UpdateModal
@@ -229,21 +265,11 @@ const App = () => {
         versionInfo={versionInfo}
         onClose={() => setShowUpdateModal(false)}
       />
-      <AnimatedSplash
-        isVisible={showAnimatedSplash}
-        onAnimationEnd={handleSplashAnimationEnd}
-      />
     </SafeAreaProvider>
   );
 };
 
 const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F2F4F7',
-  },
   tabBar: {
     height: 64,
     paddingBottom: 6,
