@@ -20,6 +20,32 @@ export interface TransactionItem {
   tags: TagInfo[];
 }
 
+export interface TransactionDetail {
+  transId: number;
+  transDate: string;
+  transType: 'INCOME' | 'EXPENSE' | 'TRANSFER' | 'OTHER';
+  description: string;
+  amount: string;
+  attachmentId?: string;
+  bookId: number;
+  tags: TagInfo[];
+  entries: TransactionEntry[];
+}
+
+export interface TransactionEntry {
+  entryId: number;
+  accountId: number;
+  accountName: string;
+  accountIcon: string;
+  accountType: 'ASSET' | 'LIABILITY' | 'EQUITY' | 'INCOME' | 'EXPENSE';
+  direction: 'DEBIT' | 'CREDIT';
+  amount: string;
+  memo?: string;
+  quantity?: string;
+  price?: string;
+  commodityCode?: string;
+}
+
 export interface DailyGroup {
   date: string;
   dailyIncome: number;
@@ -58,6 +84,13 @@ export async function getTransactionDetails(
   );
 }
 
+/** 获取单个交易详情（包含完整分录） */
+export async function getTransactionDetail(
+  transId: number,
+): Promise<TransactionDetail> {
+  return authFetch<TransactionDetail>(`/fin/transactions/with-entries/${transId}`);
+}
+
 /** 分录请求 */
 export interface EntryRequest {
   accountId: number | string;
@@ -93,5 +126,32 @@ export async function createTransaction(
   return authFetch<CreateTransactionResponse>('/fin/transactions/with-entries', {
     method: 'POST',
     body: JSON.stringify(data),
+  });
+}
+
+/** 更新交易请求 */
+export interface UpdateTransactionRequest {
+  transDate?: string;
+  description?: string;
+  attachmentId?: string;
+  tagIds?: number[];
+  entries: EntryRequest[];
+}
+
+/** 更新交易及分录（复式记账） */
+export async function updateTransaction(
+  transId: number,
+  data: UpdateTransactionRequest,
+): Promise<boolean> {
+  return authFetch<boolean>(`/fin/transactions/with-entries/${transId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+/** 删除交易记录 */
+export async function deleteTransaction(transId: number): Promise<boolean> {
+  return authFetch<boolean>(`/fin/transactions/${transId}`, {
+    method: 'DELETE',
   });
 }

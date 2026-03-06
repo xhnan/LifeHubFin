@@ -418,7 +418,7 @@ const AddScreen = ({ navigation }: any) => {
       setAmountStr(prev => prev.length > 0 ? prev.slice(0, -1) : '');
       return;
     }
-    if (key === '📅今天' || key.match(/^\d{2}-\d{2}$/)) {
+    if (key === '今天' || key.match(/^\d{2}-\d{2}$/)) {
       setDatePickerVisible(true);
       return;
     }
@@ -448,7 +448,7 @@ const AddScreen = ({ navigation }: any) => {
     const d = new Date();
     const pad = (v: number) => String(v).padStart(2, '0');
     const tStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    if (transDate.startsWith(tStr)) return '📅今天';
+    if (transDate.startsWith(tStr)) return '今天';
     return transDate.substring(5, 10); // MM-DD
   };
 
@@ -628,6 +628,7 @@ const AddScreen = ({ navigation }: any) => {
                 <View style={$.keyRow} key={`row_${i}`}>
                   {row.map(btn => {
                     const isDone = btn === '完成';
+                    const isDateBtn = btn === '今天' || btn.match(/^\d{2}-\d{2}$/);
                     return (
                       <TouchableOpacity
                         key={btn}
@@ -637,6 +638,11 @@ const AddScreen = ({ navigation }: any) => {
                         activeOpacity={0.6}>
                         {submitting && isDone ? (
                           <ActivityIndicator color="#fff" />
+                        ) : isDateBtn ? (
+                          <View style={$.dateBtnContent}>
+                            <IconifyIcon icon="material-symbols-light:calendar-month-rounded" size={20} color={THEME} />
+                            <Text style={$.dateBtnText}>{btn}</Text>
+                          </View>
                         ) : (
                           <Text style={[$.keyText, isDone && $.keyDoneText]}>{btn}</Text>
                         )}
@@ -752,6 +758,8 @@ const $ = StyleSheet.create({
   keyDoneBtn: { backgroundColor: THEME },
   keyText: { fontSize: 22, color: '#333', fontWeight: '400' },
   keyDoneText: { fontSize: 18, fontWeight: '700', color: '#fff' },
+  dateBtnContent: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  dateBtnText: { fontSize: 16, color: THEME, fontWeight: '600' },
 
   formPad: { padding: 16 },
   transferBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F6F8', padding: 16, borderRadius: 12 },
