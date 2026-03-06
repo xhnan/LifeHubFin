@@ -22,6 +22,7 @@ import {
 } from './src/services/navigationService';
 import { UpdateModal } from './src/components/UpdateModal';
 import { checkForUpdates } from './src/services/versionCheck';
+import { cleanupUpdateCache } from './src/services/updateManager';
 import type { VersionCheckResponse } from './src/types/version';
 import NativeImageHandler, { type EmitterSubscription } from './src/services/nativeImageHandler';
 import { Platform } from 'react-native';
@@ -201,6 +202,11 @@ const App = () => {
   useEffect(() => {
     // 立即隐藏启动屏，让用户看到界面
     SplashScreen.hide();
+
+    // 清理更新缓存（异步执行，不阻塞界面）
+    cleanupUpdateCache().catch(err => {
+      console.warn('[App] 清理更新缓存失败:', err);
+    });
 
     // 注册 Token 过期回调
     registerTokenExpiredCallback(() => {

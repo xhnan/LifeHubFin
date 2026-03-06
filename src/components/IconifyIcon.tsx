@@ -17,18 +17,35 @@ const pendingFetches = new Map<string, Promise<string>>();
 const failCount = new Map<string, number>();
 const MAX_RETRIES = 3;
 
+/**
+ * 标准化图标名称
+ * - 将 material-symbols-light: 转换为 material-symbols:（Iconify API 不支持 light 变体）
+ */
+function normalizeIconName(icon: string): string {
+  if (icon.startsWith('material-symbols-light:')) {
+    return icon.replace('material-symbols-light:', 'material-symbols:');
+  }
+  return icon;
+}
+
 function fetchIconSvg(icon: string): Promise<string> {
-  // Return cached
+  // Normalize icon name before fetching
+  const normalizedIcon = normalizeIconName(icon);
+
+  // Return cached (check both original and normalized)
+  if (svgRawCache.has(normalizedIcon))
+    return Promise.resolve(svgRawCache.get(normalizedIcon)!);
   if (svgRawCache.has(icon)) return Promise.resolve(svgRawCache.get(icon)!);
 
   // Return pending
-  if (pendingFetches.has(icon)) return pendingFetches.get(icon)!;
+  if (pendingFetches.has(normalizedIcon))
+    return pendingFetches.get(normalizedIcon)!;
 
   // Check retry limit
-  const fails = failCount.get(icon) || 0;
+  const fails = failCount.get(normalizedIcon) || 0;
   if (fails >= MAX_RETRIES) return Promise.reject(new Error('max retries'));
 
-  const [prefix, ...rest] = icon.split(':');
+  const [prefix, ...rest] = normalizedIcon.split(':');
   const name = rest.join(':');
   const url = `https://api.iconify.design/${prefix}/${name}.svg`;
 
@@ -58,7 +75,12 @@ function applySvgColor(rawSvg: string, color: string): string {
   return rawSvg.replace(/fill="currentColor"/g, `fill="${color}"`);
 }
 
-const IconifyIcon = ({ icon, size = 24, color, fallback = '📌' }: IconifyIconProps) => {
+const IconifyIcon = ({
+  icon,
+  size = 24,
+  color,
+  fallback = '📌',
+}: IconifyIconProps) => {
   const [svgXml, setSvgXml] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const mountedRef = useRef(true);
@@ -67,7 +89,9 @@ const IconifyIcon = ({ icon, size = 24, color, fallback = '📌' }: IconifyIconP
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   // Load SVG when icon changes
@@ -126,7 +150,13 @@ const IconifyIcon = ({ icon, size = 24, color, fallback = '📌' }: IconifyIconP
   if (!svgXml) {
     // Show fallback while loading (not an error — still loading)
     return (
-      <Text style={{ fontSize: size * 0.8, color: color || undefined, opacity: 0.3 }}>
+      <Text
+        style={{
+          fontSize: size * 0.8,
+          color: color || undefined,
+          opacity: 0.3,
+        }}
+      >
         {fallback}
       </Text>
     );

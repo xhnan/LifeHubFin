@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Modal,
   Platform,
+  ScrollView,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
@@ -37,21 +38,11 @@ const DateTimePickerComponent: React.FC<DateTimePickerProps> = ({
   const [selectedDate, setSelectedDate] = useState<Date>(() =>
     parseDateTime(value),
   );
-  const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
-  const [showPicker, setShowPicker] = useState(false);
 
   // 当外部 value 变化时，同步到内部状态
   useEffect(() => {
     setSelectedDate(parseDateTime(value));
   }, [value]);
-
-  // 当 visible 变化时重置 picker 状态
-  useEffect(() => {
-    if (visible) {
-      setPickerMode('date');
-      setShowPicker(false);
-    }
-  }, [visible]);
 
   // 格式化日期时间为字符串
   const formatDateTime = (date: Date): string => {
@@ -61,46 +52,55 @@ const DateTimePickerComponent: React.FC<DateTimePickerProps> = ({
     )} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
   };
 
-  // 格式化日期显示
-  const formatDateDisplay = (date: Date): string => {
-    const pad = (v: number) => String(v).padStart(2, '0');
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
-      date.getDate(),
-    )}`;
-  };
-
-  // 格式化时间显示
-  const formatTimeDisplay = (date: Date): string => {
-    const pad = (v: number) => String(v).padStart(2, '0');
-    return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  };
-
   const handleConfirm = () => {
     onConfirm(formatDateTime(selectedDate));
   };
 
   const handleDateChange = (_event: any, date?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowPicker(false);
-    }
     if (date) {
       setSelectedDate(date);
-      // Android: 选择完日期后显示时间选择器
-      if (Platform.OS === 'android' && pickerMode === 'date') {
-        setPickerMode('time');
-        setShowPicker(true);
-      }
     }
   };
 
-  const openDatePicker = () => {
-    setPickerMode('date');
-    setShowPicker(true);
+  // 生成年份列表（前后10年）
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 21 }, (_, i) => currentYear - 10 + i);
+  const months = Array.from({ length: 12 }, (_, i) => i + 1);
+  const days = Array.from(
+    { length: new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate() },
+    (_, i) => i + 1
+  );
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+  const minutes = Array.from({ length: 60 }, (_, i) => i);
+
+  const updateYear = (year: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setFullYear(year);
+    setSelectedDate(newDate);
   };
 
-  const openTimePicker = () => {
-    setPickerMode('time');
-    setShowPicker(true);
+  const updateMonth = (month: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setMonth(month - 1);
+    setSelectedDate(newDate);
+  };
+
+  const updateDay = (day: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(day);
+    setSelectedDate(newDate);
+  };
+
+  const updateHour = (hour: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setHours(hour);
+    setSelectedDate(newDate);
+  };
+
+  const updateMinute = (minute: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setMinutes(minute);
+    setSelectedDate(newDate);
   };
 
   return (
@@ -121,11 +121,6 @@ const DateTimePickerComponent: React.FC<DateTimePickerProps> = ({
             <TouchableOpacity onPress={handleConfirm} style={s.headerBtn}>
               <Text style={s.confirmText}>确定</Text>
             </TouchableOpacity>
-          </View>
-
-          {/* 当前选择预览 */}
-          <View style={s.previewBox}>
-            <Text style={s.previewValue}>{formatDateTime(selectedDate)}</Text>
           </View>
 
           {/* iOS 原生日期时间选择器 */}
@@ -151,43 +146,124 @@ const DateTimePickerComponent: React.FC<DateTimePickerProps> = ({
             </View>
           )}
 
-          {/* Android 选择按钮 */}
+          {/* Android 滚轮选择器 */}
           {Platform.OS === 'android' && (
             <View style={s.androidSection}>
-              <TouchableOpacity
-                style={s.androidPickerBtn}
-                onPress={openDatePicker}
-              >
-                <Text style={s.androidPickerBtnLabel}>日期</Text>
-                <Text style={s.androidPickerBtnValue}>
-                  {formatDateDisplay(selectedDate)}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={s.androidPickerBtn}
-                onPress={openTimePicker}
-              >
-                <Text style={s.androidPickerBtnLabel}>时间</Text>
-                <Text style={s.androidPickerBtnValue}>
-                  {formatTimeDisplay(selectedDate)}
-                </Text>
-              </TouchableOpacity>
-
-              {/* 原生选择器 */}
-              {showPicker && (
-                <DateTimePicker
-                  value={selectedDate}
-                  mode={pickerMode}
-                  display="default"
-                  onChange={handleDateChange}
+              <View style={s.wheelRow}>
+                <WheelPicker
+                  items={years.map(y => ({ label: String(y), value: y }))}
+                  selectedValue={selectedDate.getFullYear()}
+                  onSelect={updateYear}
                 />
-              )}
+                <WheelPicker
+                  items={months.map(m => ({ label: String(m).padStart(2, '0'), value: m }))}
+                  selectedValue={selectedDate.getMonth() + 1}
+                  onSelect={updateMonth}
+                />
+                <WheelPicker
+                  items={days.map(d => ({ label: String(d).padStart(2, '0'), value: d }))}
+                  selectedValue={selectedDate.getDate()}
+                  onSelect={updateDay}
+                />
+              </View>
+              <View style={s.divider} />
+              <View style={s.wheelRow}>
+                <WheelPicker
+                  items={hours.map(h => ({ label: String(h).padStart(2, '0'), value: h }))}
+                  selectedValue={selectedDate.getHours()}
+                  onSelect={updateHour}
+                />
+                <Text style={s.colon}>:</Text>
+                <WheelPicker
+                  items={minutes.map(m => ({ label: String(m).padStart(2, '0'), value: m }))}
+                  selectedValue={selectedDate.getMinutes()}
+                  onSelect={updateMinute}
+                />
+              </View>
             </View>
           )}
         </View>
       </View>
     </Modal>
+  );
+};
+
+// 滚轮选择器组件
+interface PickerItem {
+  label: string;
+  value: number;
+}
+
+interface WheelPickerProps {
+  items: PickerItem[];
+  selectedValue: number;
+  onSelect: (value: number) => void;
+}
+
+const WheelPicker: React.FC<WheelPickerProps> = ({ items, selectedValue, onSelect }) => {
+  const scrollViewRef = React.useRef<ScrollView>(null);
+  const itemHeight = 44;
+  const visibleItemCount = 5;
+
+  useEffect(() => {
+    const index = items.findIndex(item => item.value === selectedValue);
+    if (index >= 0 && scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({
+        y: index * itemHeight,
+        animated: false,
+      });
+    }
+  }, []);
+
+  return (
+    <View style={[s.wheelPicker, { height: itemHeight * visibleItemCount }]}>
+      <View style={s.selectionIndicator} />
+      <ScrollView
+        ref={scrollViewRef}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={itemHeight}
+        decelerationRate="fast"
+        onMomentumScrollEnd={(event) => {
+          const index = Math.round(event.nativeEvent.contentOffset.y / itemHeight);
+          if (items[index]) {
+            onSelect(items[index].value);
+          }
+        }}
+        contentContainerStyle={{
+          paddingVertical: (itemHeight * (visibleItemCount - 1)) / 2,
+        }}
+      >
+        {items.map((item) => (
+          <TouchableOpacity
+            key={item.value}
+            style={[
+              s.wheelItem,
+              { height: itemHeight },
+              item.value === selectedValue && s.wheelItemSelected,
+            ]}
+            onPress={() => {
+              onSelect(item.value);
+              const index = items.findIndex(i => i.value === item.value);
+              if (scrollViewRef.current) {
+                scrollViewRef.current.scrollTo({
+                  y: index * itemHeight,
+                  animated: true,
+                });
+              }
+            }}
+          >
+            <Text
+              style={[
+                s.wheelItemText,
+                item.value === selectedValue && s.wheelItemTextSelected,
+              ]}
+            >
+              {item.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
   );
 };
 
@@ -232,19 +308,6 @@ const s = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'right',
   },
-  previewBox: {
-    padding: 20,
-    alignItems: 'center',
-    backgroundColor: '#F0F6FF',
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 12,
-  },
-  previewValue: {
-    fontSize: 18,
-    color: '#1E3A8A',
-    fontWeight: '600',
-  },
   pickerWrapper: {
     paddingVertical: 16,
   },
@@ -257,28 +320,51 @@ const s = StyleSheet.create({
     marginHorizontal: 16,
   },
   androidSection: {
-    padding: 20,
+    paddingVertical: 20,
   },
-  androidPickerBtn: {
+  wheelRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#F5F7FA',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
   },
-  androidPickerBtnLabel: {
-    fontSize: 15,
-    color: '#666',
+  wheelPicker: {
+    flex: 1,
+    position: 'relative',
+  },
+  selectionIndicator: {
+    position: 'absolute',
+    top: '50%',
+    left: 0,
+    right: 0,
+    height: 44,
+    marginTop: -22,
+    backgroundColor: 'rgba(59, 125, 216, 0.1)',
+    borderRadius: 8,
+    marginHorizontal: 8,
+  },
+  wheelItem: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  wheelItemSelected: {
+    // 选中项样式
+  },
+  wheelItemText: {
+    fontSize: 18,
+    color: '#999',
     fontWeight: '500',
   },
-  androidPickerBtnValue: {
-    fontSize: 16,
+  wheelItemTextSelected: {
+    fontSize: 22,
+    color: '#3B7DD8',
+    fontWeight: '700',
+  },
+  colon: {
+    fontSize: 24,
     color: '#333',
-    fontWeight: '600',
+    fontWeight: '700',
+    marginHorizontal: 8,
   },
 });
 

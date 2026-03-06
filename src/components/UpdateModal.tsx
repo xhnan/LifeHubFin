@@ -62,11 +62,13 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
         setProgress(p);
       });
 
-      // 下载完成，准备安装
-      setProgress({
-        ...p,
-        progress: 100,
-      });
+      // 下载完成，更新进度为 100%
+      if (progress) {
+        setProgress({
+          ...progress,
+          progress: 100,
+        });
+      }
 
       // 安装 APK
       await installAPK(filePath);

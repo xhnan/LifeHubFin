@@ -54,3 +54,10 @@ export function goBack() {
     navigationRef.goBack();
   }
 }
+
+/**
+ * 退出登录
+ */
+export async function logout() {
+  await handleTokenExpired();
+}

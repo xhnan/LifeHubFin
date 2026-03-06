@@ -117,7 +117,60 @@ export async function installAPK(filePath: string): Promise<void> {
   try {
     // 使用原生模块安装 APK（支持 FileProvider）
     await ApkInstaller.install(filePath);
+
+    // 安装成功后，延迟清理 APK 文件
+    // 延迟是因为 install() 调用会立即返回，实际安装还在进行中
+    setTimeout(() => {
+      cleanupAPK().catch(err => {
+        console.warn('[UpdateManager] 清理 APK 失败:', err);
+      });
+    }, 3000); // 3秒后清理，给系统安装程序足够时间
   } catch (error: any) {
     throw new Error(`安装失败: ${error.message || error}`);
+  }
+}
+
+/**
+ * 清理已下载的 APK 文件
+ */
+export async function cleanupAPK(): Promise<void> {
+  if (Platform.OS !== 'android') {
+    return;
+  }
+
+  try {
+    const downloadPath = `${DOWNLOAD_DIR}/${APK_FILENAME}`;
+
+    if (await RNFS.exists(downloadPath)) {
+      await RNFS.unlink(downloadPath);
+      console.log('[UpdateManager] APK 文件已清理:', downloadPath);
+    }
+  } catch (error: any) {
+    console.warn('[UpdateManager] 清理 APK 文件失败:', error.message);
+  }
+}
+
+/**
+ * 清理所有更新相关的缓存文件
+ */
+export async function cleanupUpdateCache(): Promise<void> {
+  if (Platform.OS !== 'android') {
+    return;
+  }
+
+  try {
+    const files = await RNFS.readDir(DOWNLOAD_DIR);
+    const apkFiles = files.filter(
+      file => file.isFile() && file.name.includes('LifeHubFin') && file.name.endsWith('.apk')
+    );
+
+    for (const file of apkFiles) {
+      await RNFS.unlink(file.path);
+      console.log('[UpdateManager] 清理缓存 APK:', file.name);
+    }
+
+    console.log(`[UpdateManager] 共清理 ${apkFiles.length} 个 APK 文件`);
+  } catch (error: any) {
+    console.warn('[UpdateManager] 清理更新缓存失败:', error.message);
   }
 }

@@ -141,19 +141,6 @@ const getSmartIcon = (icon: string | undefined | null, name: string): string => 
   return icon;
 };
 
-const uniqueAccountsById = (list: Account[]): Account[] => {
-  const seen = new Set<string>();
-  return list.filter(item => {
-    const key = String(item.id);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-};
-
-const sortByWeight = (list: Account[]): Account[] =>
-  [...list].sort((a, b) => (a.sortWeight ?? 0) - (b.sortWeight ?? 0));
-
 const AddScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
   const store = useFinanceStore();
@@ -170,7 +157,6 @@ const AddScreen = ({ navigation }: any) => {
   const books = store.books;
   const selectedBookId = store.selectedBookId;
   const accounts = store.accounts;
-  const subjectCategories = store.subjectCategories;
   const tags = store.tags;
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -214,115 +200,28 @@ const AddScreen = ({ navigation }: any) => {
     return list.filter(a => { const k = String(a.id); if (seen.has(k)) return false; seen.add(k); return true; });
   }, [accounts]);
 
-  const expenseOccurrenceSubjects = useMemo(() => {
-    const apiList = subjectCategories?.expense?.occurrenceSubjects;
-    if (Array.isArray(apiList) && apiList.length > 0) {
-      return sortByWeight(uniqueAccountsById(apiList));
-    }
-    return allLeafAccounts.filter(a => a.accountType === 'EXPENSE');
-  }, [subjectCategories, allLeafAccounts]);
-
-  const incomeOccurrenceSubjects = useMemo(() => {
-    const apiList = subjectCategories?.income?.occurrenceSubjects;
-    if (Array.isArray(apiList) && apiList.length > 0) {
-      return sortByWeight(uniqueAccountsById(apiList));
-    }
-    return allLeafAccounts.filter(a => a.accountType === 'INCOME');
-  }, [subjectCategories, allLeafAccounts]);
-
-  const expensePaymentSubjects = useMemo(() => {
-    const apiList = subjectCategories?.expense?.paymentSubjects;
-    if (Array.isArray(apiList) && apiList.length > 0) {
-      return sortByWeight(uniqueAccountsById(apiList));
-    }
-    return allLeafAccounts.filter(a => ['ASSET', 'LIABILITY'].includes(a.accountType));
-  }, [subjectCategories, allLeafAccounts]);
-
-  const incomeReceiptSubjects = useMemo(() => {
-    const apiList = subjectCategories?.income?.receiptSubjects;
-    if (Array.isArray(apiList) && apiList.length > 0) {
-      return sortByWeight(uniqueAccountsById(apiList));
-    }
-    return allLeafAccounts.filter(a => ['ASSET', 'LIABILITY'].includes(a.accountType));
-  }, [subjectCategories, allLeafAccounts]);
-
-  const transferCandidateAccounts = useMemo(() => {
-    return allLeafAccounts.filter(a => ['ASSET', 'LIABILITY'].includes(a.accountType));
-  }, [allLeafAccounts]);
-
-  const [pickerOptions, setPickerOptions] = useState<Account[] | null>(null);
-
   const pickerLeafAccounts = useMemo(() => {
-    if (pickerOptions && pickerOptions.length > 0) {
-      return uniqueAccountsById(pickerOptions);
-    }
     return pickerFilter.length > 0
       ? allLeafAccounts.filter(a => pickerFilter.includes(a.accountType))
       : allLeafAccounts;
-  }, [pickerOptions, allLeafAccounts, pickerFilter]);
+  }, [allLeafAccounts, pickerFilter]);
 
   useEffect(() => {
-    if (
-      expenseOccurrenceSubjects.length > 0 &&
-      !expenseOccurrenceSubjects.some(a => String(a.id) === String(expenseAccountId))
-    ) {
-      setExpenseAccountId(expenseOccurrenceSubjects[0].id);
+    if (leafAccountsByType('EXPENSE').length > 0 && !expenseAccountId) setExpenseAccountId(leafAccountsByType('EXPENSE')[0].id);
+    if (leafAccountsByType('INCOME').length > 0 && !incomeAccountId) setIncomeAccountId(leafAccountsByType('INCOME')[0].id);
+    const assetLiabs = allLeafAccounts.filter(a => ['ASSET', 'LIABILITY'].includes(a.accountType));
+    if (assetLiabs.length > 0) {
+      if (!payAccountId) setPayAccountId(assetLiabs[0].id);
+      if (!depositAccountId) setDepositAccountId(assetLiabs[0].id);
+      if (!fromAccountId) setFromAccountId(assetLiabs[0].id);
+      if (!toAccountId && assetLiabs.length > 1) setToAccountId(assetLiabs[1].id);
+      else if (!toAccountId) setToAccountId(assetLiabs[0].id);
     }
+  }, [allLeafAccounts]);
 
-    if (
-      incomeOccurrenceSubjects.length > 0 &&
-      !incomeOccurrenceSubjects.some(a => String(a.id) === String(incomeAccountId))
-    ) {
-      setIncomeAccountId(incomeOccurrenceSubjects[0].id);
-    }
+  const leafAccountsByType = (type: string) => allLeafAccounts.filter(a => a.accountType === type);
 
-    if (
-      expensePaymentSubjects.length > 0 &&
-      !expensePaymentSubjects.some(a => String(a.id) === String(payAccountId))
-    ) {
-      setPayAccountId(expensePaymentSubjects[0].id);
-    }
-
-    if (
-      incomeReceiptSubjects.length > 0 &&
-      !incomeReceiptSubjects.some(a => String(a.id) === String(depositAccountId))
-    ) {
-      setDepositAccountId(incomeReceiptSubjects[0].id);
-    }
-
-    if (transferCandidateAccounts.length > 0) {
-      if (!transferCandidateAccounts.some(a => String(a.id) === String(fromAccountId))) {
-        setFromAccountId(transferCandidateAccounts[0].id);
-      }
-
-      if (!transferCandidateAccounts.some(a => String(a.id) === String(toAccountId))) {
-        setToAccountId(
-          transferCandidateAccounts.length > 1
-            ? transferCandidateAccounts[1].id
-            : transferCandidateAccounts[0].id,
-        );
-      }
-    }
-  }, [
-    expenseOccurrenceSubjects,
-    incomeOccurrenceSubjects,
-    expensePaymentSubjects,
-    incomeReceiptSubjects,
-    transferCandidateAccounts,
-    expenseAccountId,
-    incomeAccountId,
-    payAccountId,
-    depositAccountId,
-    fromAccountId,
-    toAccountId,
-  ]);
-
-  const openPicker = (target: string, filter: string[], options?: Account[]) => {
-    setPickerTarget(target);
-    setPickerFilter(filter);
-    setPickerOptions(options && options.length > 0 ? options : null);
-    setPickerVisible(true);
-  };
+  const openPicker = (target: string, filter: string[]) => { setPickerTarget(target); setPickerFilter(filter); setPickerVisible(true); };
 
   const onPick = (acc: Account) => {
     setPickerVisible(false);
@@ -342,6 +241,18 @@ const AddScreen = ({ navigation }: any) => {
   const addEntry = () => setEntries(p => [...p, { key: nextKey(), accountId: null, accountName: '', direction: 'DEBIT', amount: '', memo: '' }]);
   const removeEntry = (i: number) => { if (entries.length <= 2) { Alert.alert('提示', '至少需要2条分录'); return; } setEntries(p => p.filter((_, j) => j !== i)); };
   const updateEntry = (i: number, f: keyof EntryRow, v: any) => setEntries(p => p.map((e, j) => j === i ? { ...e, [f]: v } : e));
+
+  const getPayAccountName = () => {
+    if (mode === 'expense') return getName(payAccountId);
+    if (mode === 'income') return getName(depositAccountId);
+    return getName(fromAccountId);
+  };
+
+  const openPayPicker = () => {
+    if (mode === 'expense') openPicker('pay', ['ASSET', 'LIABILITY']);
+    else if (mode === 'income') openPicker('deposit', ['ASSET', 'LIABILITY']);
+    else openPicker('from', ['ASSET', 'LIABILITY']);
+  };
 
   const buildEntries = (): EntryRequest[] | null => {
     if (mode === 'advanced') {
@@ -404,6 +315,11 @@ const AddScreen = ({ navigation }: any) => {
     finally { setSubmitting(false); }
   };
 
+  const resetForm = () => {
+    setDescription(''); setAmountStr(''); setSelectedTagIds([]);
+    setEntries([{ key: nextKey(), accountId: null, accountName: '', direction: 'DEBIT', amount: '', memo: '' }, { key: nextKey(), accountId: null, accountName: '', direction: 'CREDIT', amount: '', memo: '' }]);
+  };
+
   const handleKey = (key: string) => {
     if (key === '完成') {
       const match = amountStr.match(/[\+\-]$/);
@@ -461,7 +377,7 @@ const AddScreen = ({ navigation }: any) => {
 
   const renderCategoryGrid = () => {
     const isExp = mode === 'expense';
-    const list = isExp ? expenseOccurrenceSubjects : incomeOccurrenceSubjects;
+    const list = leafAccountsByType(isExp ? 'EXPENSE' : 'INCOME');
     const selectedId = isExp ? expenseAccountId : incomeAccountId;
 
     return (
@@ -524,12 +440,12 @@ const AddScreen = ({ navigation }: any) => {
 
         {mode === 'transfer' && (
           <View style={$.formPad}>
-            <TouchableOpacity style={$.transferBtn} onPress={() => openPicker('from', ['ASSET', 'LIABILITY'], transferCandidateAccounts)}>
+            <TouchableOpacity style={$.transferBtn} onPress={() => openPicker('from', ['ASSET', 'LIABILITY'])}>
               <Text style={$.transferIcon}>📤</Text>
               <Text style={$.transferLabel}>转出账户</Text>
               <Text style={$.transferVal}>{getName(fromAccountId) || '请选择'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[$.transferBtn, { marginTop: 12 }]} onPress={() => openPicker('to', ['ASSET', 'LIABILITY'], transferCandidateAccounts)}>
+            <TouchableOpacity style={[$.transferBtn, { marginTop: 12 }]} onPress={() => openPicker('to', ['ASSET', 'LIABILITY'])}>
               <Text style={$.transferIcon}>📥</Text>
               <Text style={$.transferLabel}>转入账户</Text>
               <Text style={$.transferVal}>{getName(toAccountId) || '请选择'}</Text>
@@ -590,7 +506,7 @@ const AddScreen = ({ navigation }: any) => {
             {mode !== 'transfer' && (
               <View style={$.payRowWrapper}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={$.payRow}>
-                  {(mode === 'expense' ? expensePaymentSubjects : incomeReceiptSubjects).map(acc => {
+                  {allLeafAccounts.filter(a => ['ASSET', 'LIABILITY'].includes(a.accountType)).map(acc => {
                     const isPaySel = mode === 'expense' ? acc.id === payAccountId : acc.id === depositAccountId;
                     return (
                       <TouchableOpacity

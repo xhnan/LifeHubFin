@@ -13,6 +13,7 @@ import {useNavigation} from '@react-navigation/native';
 import {APP_VERSION} from '../config/version';
 import {checkForUpdatesManual} from '../services/versionCheck';
 import {UpdateModal} from '../components/UpdateModal';
+import {logout} from '../services/navigationService';
 
 const MENU_ITEMS = [
   {icon: '📒', label: '账本管理', route: '账本管理'},
@@ -27,6 +28,10 @@ const SETTINGS = [
   {icon: '🎨', label: '主题外观'},
   {icon: '🔒', label: '安全设置'},
   {icon: '❓', label: '帮助与反馈'},
+];
+
+const ACCOUNT_ITEMS = [
+  {icon: '🚪', label: '退出登录', action: 'logout'},
 ];
 
 const ProfileScreen = () => {
@@ -58,9 +63,29 @@ const ProfileScreen = () => {
   const handleMenuPress = (item: any) => {
     if (item.action === 'checkUpdate') {
       handleCheckUpdate();
+    } else if (item.action === 'logout') {
+      handleLogout();
     } else if (item.route) {
       navigation.navigate(item.route);
     }
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      '退出登录',
+      '确定要退出登录吗？',
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '确定',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   return (
@@ -115,6 +140,23 @@ const ProfileScreen = () => {
           ))}
         </View>
 
+        {/* 账户操作 */}
+        <View style={s.card}>
+          {ACCOUNT_ITEMS.map((item, i) => (
+            <React.Fragment key={item.label}>
+              {i > 0 && <View style={s.divider} />}
+              <TouchableOpacity
+                style={s.menuRow}
+                onPress={() => handleMenuPress(item)}
+                activeOpacity={0.6}>
+                <Text style={s.menuIcon}>{item.icon}</Text>
+                <Text style={[s.menuLabel, s.logoutLabel]}>{item.label}</Text>
+                <Text style={s.menuArrow}>›</Text>
+              </TouchableOpacity>
+            </React.Fragment>
+          ))}
+        </View>
+
         <Text style={s.version}>LifeHub v{APP_VERSION}</Text>
       </View>
 
@@ -144,6 +186,7 @@ const s = StyleSheet.create({
   menuRow: {flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 16},
   menuIcon: {fontSize: 20, marginRight: 14},
   menuLabel: {flex: 1, fontSize: 15, fontWeight: '500', color: '#333'},
+  logoutLabel: {color: '#FF3B30'},
   menuArrow: {fontSize: 18, color: '#D0D5DD'},
 
   version: {textAlign: 'center', fontSize: 12, color: '#C8CDD5', marginTop: 24},
