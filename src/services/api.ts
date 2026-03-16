@@ -1,4 +1,4 @@
-import {getToken} from './auth';
+import {getToken, refreshAccessToken, saveAuthTokens} from './auth';
 import {handleTokenExpired} from './navigationService';
 import {API_BASE_URL} from '../config/api';
 
@@ -12,6 +12,71 @@ export interface ResponseResult<T> {
   timestamp: number;
 }
 
+let refreshTokenPromise: Promise<string | null> | null = null;
+
+function isTokenExpiredResult(result: ResponseResult<unknown>): boolean {
+  const errorMessage = result.message || '';
+
+  return (
+    errorMessage.includes('Token已过期') ||
+    errorMessage.includes('JWT expired') ||
+    errorMessage.includes('Token过期') ||
+    errorMessage.includes('Expired') ||
+    errorMessage.includes('请重新登录') ||
+    result.code === 401
+  );
+}
+
+async function parseResponseResult<T>(res: Response): Promise<ResponseResult<T>> {
+  const text = await res.text();
+
+  if (!text.trim()) {
+    throw new Error('服务器响应为空');
+  }
+
+  const safeText = text.replace(/:\s*(\d{16,})/g, ': "$1"');
+
+  try {
+    return JSON.parse(safeText);
+  } catch {
+    throw new Error('服务器响应格式错误');
+  }
+}
+
+async function tryRefreshToken(): Promise<string | null> {
+  if (!refreshTokenPromise) {
+    refreshTokenPromise = (async () => {
+      try {
+        const loginResponse = await refreshAccessToken();
+        await saveAuthTokens(loginResponse);
+        return loginResponse.token;
+      } catch {
+        await handleTokenExpired();
+        return null;
+      } finally {
+        refreshTokenPromise = null;
+      }
+    })();
+  }
+
+  return refreshTokenPromise;
+}
+
+async function sendRequest(
+  path: string,
+  options: RequestInit,
+  token: string | null,
+): Promise<Response> {
+  return fetch(`${BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? {Authorization: `Bearer ${token}`} : {}),
+      ...options.headers,
+    },
+  });
+}
+
 /**
  * 带 JWT 认证的通用请求方法
  */
@@ -20,56 +85,44 @@ export async function authFetch<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const token = await getToken();
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? {Authorization: `Bearer ${token}`} : {}),
-      ...options.headers,
-    },
-  });
+  let res = await sendRequest(path, options, token);
 
-  // 首先检查 HTTP 401
   if (res.status === 401) {
-    await handleTokenExpired();
-    const error = new Error('登录已过期，请重新登录');
-    (error as any).isTokenExpired = true;
-    throw error;
+    const newToken = await tryRefreshToken();
+
+    if (!newToken) {
+      const error = new Error('登录已过期，请重新登录');
+      (error as any).isTokenExpired = true;
+      throw error;
+    }
+
+    res = await sendRequest(path, options, newToken);
   }
 
-  const text = await res.text();
-  // 将超过安全整数范围的数字转为字符串，避免精度丢失
-  const safeText = text.replace(
-    /:\s*(\d{16,})/g,
-    ': "$1"',
-  );
+  let result = await parseResponseResult<T>(res);
 
-  let result: ResponseResult<T>;
-  try {
-    result = JSON.parse(safeText);
-  } catch (e) {
-    throw new Error('服务器响应格式错误');
-  }
+  if (isTokenExpiredResult(result)) {
+    const newToken = await tryRefreshToken();
 
-  // 检查响应体中的 Token 过期
-  const errorMessage = result.message || '';
-  const isTokenExpired =
-    errorMessage.includes('Token已过期') ||
-    errorMessage.includes('JWT expired') ||
-    errorMessage.includes('Token过期') ||
-    errorMessage.includes('Expired') ||
-    errorMessage.includes('请重新登录') ||
-    result.code === 401;
+    if (!newToken) {
+      const error = new Error('登录已过期，请重新登录');
+      (error as any).isTokenExpired = true;
+      throw error;
+    }
 
-  if (isTokenExpired) {
-    await handleTokenExpired();
-    const error = new Error('登录已过期，请重新登录');
-    (error as any).isTokenExpired = true;
-    throw error;
+    res = await sendRequest(path, options, newToken);
+    result = await parseResponseResult<T>(res);
+
+    if (res.status === 401 || isTokenExpiredResult(result)) {
+      await handleTokenExpired();
+      const error = new Error('登录已过期，请重新登录');
+      (error as any).isTokenExpired = true;
+      throw error;
+    }
   }
 
   if (!res.ok || result.code !== 200) {
-    throw new Error(errorMessage || '请求失败');
+    throw new Error(result.message || '请求失败');
   }
 
   return result.data;

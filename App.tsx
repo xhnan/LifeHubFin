@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, AppState } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, AppState } from 'react-native';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -16,7 +16,7 @@ import BookManageScreen from './src/screens/BookManageScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import ReceiptScreen from './src/screens/ReceiptScreen';
 import TransactionDetailScreen from './src/screens/TransactionDetailScreen';
-import { getToken, removeToken } from './src/services/auth';
+import { getToken } from './src/services/auth';
 import {
   registerTokenExpiredCallback,
 } from './src/services/navigationService';
@@ -247,11 +247,6 @@ const App = () => {
 
   const handleLoginSuccess = useCallback((t: string) => {
     setToken(t);
-  }, []);
-
-  const handleLogout = useCallback(async () => {
-    await removeToken();
-    setToken(null);
   }, []);
 
   if (!token) {

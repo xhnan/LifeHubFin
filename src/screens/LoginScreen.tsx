@@ -12,7 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {login, saveToken} from '../services/auth';
+import {login, saveAuthTokens} from '../services/auth';
 
 interface LoginScreenProps {
   onLoginSuccess: (token: string) => void;
@@ -31,8 +31,9 @@ const LoginScreen = ({onLoginSuccess}: LoginScreenProps) => {
 
     setLoading(true);
     try {
-      const {token} = await login(username, password);
-      await saveToken(token);
+      const loginResponse = await login(username, password);
+      await saveAuthTokens(loginResponse);
+      const {token} = loginResponse;
       onLoginSuccess(token);
     } catch (err: any) {
       Alert.alert('登录失败', err.message || '请稍后重试');
@@ -104,8 +105,14 @@ const LoginScreen = ({onLoginSuccess}: LoginScreenProps) => {
 
 const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: '#F2F4F7'},
-  container: {flex: 1, justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 40},
-  logoArea: {alignItems: 'center', marginBottom: 48},
+  container: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    paddingHorizontal: 32,
+    paddingTop: 88,
+    paddingBottom: 40,
+  },
+  logoArea: {alignItems: 'center', marginBottom: 36},
   logoIcon: {fontSize: 56},
   logoTitle: {
     fontSize: 26,

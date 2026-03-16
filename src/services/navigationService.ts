@@ -1,5 +1,5 @@
 import { createNavigationContainerRef } from '@react-navigation/native';
-import { removeToken } from './auth';
+import { removeAuthTokens } from './auth';
 
 export const navigationRef = createNavigationContainerRef();
 
@@ -16,8 +16,8 @@ export function registerTokenExpiredCallback(callback: () => void) {
  * 处理 Token 过期
  */
 export async function handleTokenExpired() {
-  // 清除本地 Token
-  await removeToken();
+  // 清除本地登录态
+  await removeAuthTokens();
 
   // 调用回调函数，通知 App 组件更新状态
   if (tokenExpiredCallback) {
