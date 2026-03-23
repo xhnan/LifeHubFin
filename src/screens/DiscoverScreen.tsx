@@ -55,7 +55,7 @@ const DiscoverScreen = () => (
         <Text style={s.comingIcon}>🚀</Text>
         <Text style={s.comingText}>更多功能即将上线</Text>
       </View>
-      <View style={{height: 30}} />
+      <View style={s.bottomSpacer} />
     </ScrollView>
   </SafeAreaView>
 );
@@ -90,6 +90,7 @@ const s = StyleSheet.create({
   comingSoon: {alignItems: 'center', paddingVertical: 32},
   comingIcon: {fontSize: 32, marginBottom: 8},
   comingText: {fontSize: 13, color: '#C8CDD5', fontWeight: '500'},
+  bottomSpacer: {height: 30},
 });
 
 export default DiscoverScreen;

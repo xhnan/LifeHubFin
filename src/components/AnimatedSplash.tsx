@@ -1,7 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, {useEffect, useRef} from 'react';
 import {
   View,
-  Text,
   Image,
   StyleSheet,
   Animated,
@@ -9,17 +8,14 @@ import {
   StatusBar,
 } from 'react-native';
 
-const { width, height } = Dimensions.get('window');
+const {width, height} = Dimensions.get('window');
 
 interface AnimatedSplashProps {
   isVisible: boolean;
   onAnimationEnd: () => void;
 }
 
-const AnimatedSplash: React.FC<AnimatedSplashProps> = ({
-  isVisible,
-  onAnimationEnd,
-}) => {
+const AnimatedSplash: React.FC<AnimatedSplashProps> = ({isVisible, onAnimationEnd}) => {
   // Animation values
   const iconScale = useRef(new Animated.Value(0.3)).current;
   const iconOpacity = useRef(new Animated.Value(0)).current;
@@ -119,7 +115,22 @@ const AnimatedSplash: React.FC<AnimatedSplashProps> = ({
         onAnimationEnd();
       });
     }
-  }, [isVisible]);
+  }, [
+    bottomLineWidth,
+    bottomTextOpacity,
+    glowOpacity,
+    glowScale,
+    iconOpacity,
+    iconScale,
+    isVisible,
+    onAnimationEnd,
+    overallOpacity,
+    shimmerPosition,
+    subtitleOpacity,
+    subtitleTranslateY,
+    titleOpacity,
+    titleTranslateY,
+  ]);
 
   if (!isVisible) {
     return null;
@@ -131,7 +142,7 @@ const AnimatedSplash: React.FC<AnimatedSplashProps> = ({
   });
 
   return (
-    <Animated.View style={[styles.container, { opacity: overallOpacity }]}>
+    <Animated.View style={[styles.container, {opacity: overallOpacity}]}>
       <StatusBar
         backgroundColor="transparent"
         translucent

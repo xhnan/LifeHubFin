@@ -200,8 +200,8 @@ const AddScreen = ({ navigation }: any) => {
 
   const getEvaluatedAmount = () => {
     try {
-      const str = (amountStr || '0').replace(/[^\d\.\+\-]/g, '');
-      const match = str.match(/([\+\-]?)([0-9\.]+)/g);
+      const str = (amountStr || '0').replace(/[^\d.+-]/g, '');
+      const match = str.match(/([+-]?)([0-9.]+)/g);
       if (!match) return 0;
       return match.reduce((sum, part) => sum + parseFloat(part || '0'), 0);
     } catch { return 0; }
@@ -406,7 +406,7 @@ const AddScreen = ({ navigation }: any) => {
 
   const handleKey = (key: string) => {
     if (key === '完成') {
-      const match = amountStr.match(/[\+\-]$/);
+      const match = amountStr.match(/[+-]$/);
       if (match) {
         setAmountStr(amountStr.slice(0, -1));
       } else {
@@ -432,13 +432,13 @@ const AddScreen = ({ navigation }: any) => {
         return prev + key;
       }
       if (key === '.') {
-        const seg = prev.split(/[\+\-]/).pop();
+      const seg = prev.split(/[+-]/).pop();
         if (seg?.includes('.')) return prev;
         if (prev === '' || ['+', '-'].includes(prev.slice(-1))) return prev + '0.';
         return prev + '.';
       }
       if (prev === '0') return key;
-      const seg2 = prev.split(/[\+\-]/).pop();
+      const seg2 = prev.split(/[+-]/).pop();
       if (seg2 === '0') return prev.slice(0, -1) + key;
       return prev + key;
     });
@@ -458,6 +458,15 @@ const AddScreen = ({ navigation }: any) => {
     ['1', '2', '3', '-'],
     ['.', '0', '⌫', '完成']
   ];
+
+  const advancedBottomSpacerStyle = useMemo(
+    () => ({height: insets.bottom, backgroundColor: '#F2F4F7'}),
+    [insets.bottom],
+  );
+  const keypadBottomSafeStyle = useMemo(
+    () => ({height: insets.bottom, backgroundColor: '#F5F6F8'}),
+    [insets.bottom],
+  );
 
   const renderCategoryGrid = () => {
     const isExp = mode === 'expense';
@@ -485,7 +494,7 @@ const AddScreen = ({ navigation }: any) => {
             );
           })}
         </View>
-        <View style={{ height: 12 }} />
+        <View style={$.gridBottomSpacer} />
       </ScrollView>
     );
   };
@@ -513,7 +522,7 @@ const AddScreen = ({ navigation }: any) => {
           })}
         </View>
 
-        <TouchableOpacity style={[$.headSide, { alignItems: 'flex-end' }]} onPress={() => setBookPickerVisible(true)}>
+        <TouchableOpacity style={[$.headSide, $.headSideRight]} onPress={() => setBookPickerVisible(true)}>
           <Text style={$.bookNameText} numberOfLines={1}>{selectedBookId ? books.find(b => b.id === selectedBookId)?.name : '账本'}</Text>
         </TouchableOpacity>
       </View>
@@ -529,7 +538,7 @@ const AddScreen = ({ navigation }: any) => {
               <Text style={$.transferLabel}>转出账户</Text>
               <Text style={$.transferVal}>{getName(fromAccountId) || '请选择'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[$.transferBtn, { marginTop: 12 }]} onPress={() => openPicker('to', ['ASSET', 'LIABILITY'], transferCandidateAccounts)}>
+            <TouchableOpacity style={[$.transferBtn, $.transferBtnSpaced]} onPress={() => openPicker('to', ['ASSET', 'LIABILITY'], transferCandidateAccounts)}>
               <Text style={$.transferIcon}>📥</Text>
               <Text style={$.transferLabel}>转入账户</Text>
               <Text style={$.transferVal}>{getName(toAccountId) || '请选择'}</Text>
@@ -541,27 +550,27 @@ const AddScreen = ({ navigation }: any) => {
           <ScrollView contentContainerStyle={$.formPad} showsVerticalScrollIndicator={false}>
             {entries.map((ent, i) => (
               <View key={ent.key} style={$.entryCard}>
-                <TouchableOpacity style={[$.entryDir, ent.direction === 'DEBIT' ? { backgroundColor: '#3B7DD8' } : { backgroundColor: '#E67E22' }]} onPress={() => updateEntry(i, 'direction', ent.direction === 'DEBIT' ? 'CREDIT' : 'DEBIT')}>
-                  <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>{ent.direction === 'DEBIT' ? '借' : '贷'}</Text>
+                <TouchableOpacity style={[$.entryDir, ent.direction === 'DEBIT' ? $.entryDirDebit : $.entryDirCredit]} onPress={() => updateEntry(i, 'direction', ent.direction === 'DEBIT' ? 'CREDIT' : 'DEBIT')}>
+                  <Text style={$.entryDirText}>{ent.direction === 'DEBIT' ? '借' : '贷'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={$.entryAcc} onPress={() => openPicker(`entry_${i}`, [])}>
                   <Text style={$.entryAccText}>{ent.accountId ? ent.accountName : '点击选科目'}</Text>
                 </TouchableOpacity>
                 <TextInput style={$.entryInput} placeholder="金额" keyboardType="decimal-pad" value={ent.amount} onChangeText={v => updateEntry(i, 'amount', v)} />
                 {entries.length > 2 && (
-                  <TouchableOpacity onPress={() => removeEntry(i)} style={$.entryDel}><Text style={{ color: '#E63946', fontSize: 20 }}>×</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => removeEntry(i)} style={$.entryDel}><Text style={$.entryDeleteText}>×</Text></TouchableOpacity>
                 )}
               </View>
             ))}
-            <TouchableOpacity style={$.entryAdd} onPress={addEntry}><Text style={{ color: '#666' }}>+ 添加分录</Text></TouchableOpacity>
-            <View style={{ height: 12 }} />
+            <TouchableOpacity style={$.entryAdd} onPress={addEntry}><Text style={$.entryAddText}>+ 添加分录</Text></TouchableOpacity>
+            <View style={$.advancedBottomSpacer} />
           </ScrollView>
         )}
       </View>
 
       {/* Bottom safe area spacer for advanced mode */}
       {mode === 'advanced' && (
-        <View style={{ height: insets.bottom, backgroundColor: '#F2F4F7' }} />
+        <View style={advancedBottomSpacerStyle} />
       )}
 
       {/* Tags Scroll */}
@@ -573,7 +582,7 @@ const AddScreen = ({ navigation }: any) => {
               return (
                 <TouchableOpacity key={tag.id} style={[$.tagChip, sel && $.tagChipSel]} onPress={() => toggleTag(tag.id)}>
                   <IconifyIcon icon={tag.icon || ''} size={13} color={sel ? '#fff' : '#666'} fallback="🏷️" />
-                  <Text style={[$.tagChipText, sel && { color: '#fff' }]}>{tag.tagName}</Text>
+                  <Text style={[$.tagChipText, sel && $.tagChipTextSelected]}>{tag.tagName}</Text>
                 </TouchableOpacity>
               )
             })}
@@ -607,7 +616,7 @@ const AddScreen = ({ navigation }: any) => {
 
             {/* Input Row */}
             <View style={$.inputRow}>
-              <Text style={{ color: '#bbb', marginHorizontal: 6 }}>备注:</Text>
+              <Text style={$.noteLabel}>备注:</Text>
               <TextInput
                 style={$.noteInput}
                 placeholder="点击填写"
@@ -652,7 +661,7 @@ const AddScreen = ({ navigation }: any) => {
                 </View>
               ))}
             </View>
-            <View style={{ height: insets.bottom, backgroundColor: '#F5F6F8' }} />
+            <View style={keypadBottomSafeStyle} />
           </View>
         </KeyboardAvoidingView>
       )}
@@ -663,11 +672,11 @@ const AddScreen = ({ navigation }: any) => {
           <View style={$.sheet} onStartShouldSetResponder={() => true}>
             <View style={$.sheetLine} />
             <Text style={$.sheetTitle}>请选择</Text>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={$.sheetScrollContent}>
               {Object.entries(
                 pickerLeafAccounts.reduce<Record<string, Account[]>>((g, a) => { (g[a.accountType] ||= []).push(a); return g; }, {}),
               ).map(([type, accs]) => (
-                <View key={type} style={{ marginBottom: 20 }}>
+                <View key={type} style={$.sheetGroup}>
                   <Text style={$.sheetGrp}>{ACCOUNT_TYPE_LABEL[type] || type}</Text>
                   <View style={$.sheetChips}>
                     {accs.map(a => (
@@ -678,7 +687,7 @@ const AddScreen = ({ navigation }: any) => {
                   </View>
                 </View>
               ))}
-              {pickerLeafAccounts.length === 0 && <Text style={{ textAlign: 'center', color: '#ccc', marginVertical: 30 }}>无可用选项</Text>}
+              {pickerLeafAccounts.length === 0 && <Text style={$.sheetEmptyText}>无可用选项</Text>}
             </ScrollView>
           </View>
         </TouchableOpacity>
@@ -690,7 +699,7 @@ const AddScreen = ({ navigation }: any) => {
             <Text style={$.sheetTitle}>我的账本</Text>
             {books.map(b => (
               <TouchableOpacity key={b.id} style={[$.bookRow, b.id === selectedBookId && $.bookRowAc]} onPress={() => { handleSwitchBook(b.id); setBookPickerVisible(false); }}>
-                <Text style={[$.bookName, b.id === selectedBookId && { fontWeight: '700', color: '#111' }]}>{b.name}</Text>
+                <Text style={[$.bookName, b.id === selectedBookId && $.bookNameActive]}>{b.name}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -713,6 +722,7 @@ const $ = StyleSheet.create({
 
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 48, paddingHorizontal: 16 },
   headSide: { width: 56, justifyContent: 'center' },
+  headSideRight: { alignItems: 'flex-end' },
   headCancelText: { fontSize: 15, color: '#fff' },
   bookNameText: { fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '500' },
 
@@ -731,12 +741,14 @@ const $ = StyleSheet.create({
   iconCircleSel: { backgroundColor: THEME, elevation: 3, shadowColor: THEME, shadowOpacity: 0.3, shadowRadius: 6 },
   gridLabel: { fontSize: 12, color: '#888', maxWidth: 64, textAlign: 'center' },
   gridLabelSel: { color: THEME, fontWeight: '700' },
+  gridBottomSpacer: { height: 12 },
 
   tagsRowWrapper: { backgroundColor: '#fff', borderTopWidth: StyleSheet.hairlineWidth, borderColor: '#E8E8E8' },
   tagsRow: { paddingHorizontal: 16, paddingVertical: 8, alignItems: 'center', gap: 8 },
   tagChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#F0F2F5', borderRadius: 16 },
   tagChipSel: { backgroundColor: THEME },
   tagChipText: { fontSize: 12, color: '#666' },
+  tagChipTextSelected: { color: '#fff' },
 
   payRowWrapper: { backgroundColor: '#fff', borderTopWidth: StyleSheet.hairlineWidth, borderColor: '#E8E8E8' },
   payRow: { paddingHorizontal: 16, paddingVertical: 10, gap: 8, alignItems: 'center' },
@@ -747,6 +759,7 @@ const $ = StyleSheet.create({
 
   bottomArea: { backgroundColor: '#FFF' },
   inputRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, height: 52, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E8E8E8' },
+  noteLabel: { color: '#bbb', marginHorizontal: 6 },
   noteInput: { flex: 1, fontSize: 14, color: '#333', paddingVertical: 0 },
   amtWrap: { flexDirection: 'row', alignItems: 'baseline', marginLeft: 8, maxWidth: 180 },
   amtCurrency: { fontSize: 16, color: THEME, fontWeight: '600', marginRight: 2 },
@@ -763,32 +776,43 @@ const $ = StyleSheet.create({
 
   formPad: { padding: 16 },
   transferBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F6F8', padding: 16, borderRadius: 12 },
+  transferBtnSpaced: { marginTop: 12 },
   transferIcon: { fontSize: 20, marginRight: 12 },
   transferLabel: { fontSize: 15, color: '#666', width: 70 },
   transferVal: { flex: 1, fontSize: 16, color: '#111', textAlign: 'right', fontWeight: '500' },
 
   entryCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F6F8', padding: 12, borderRadius: 12, marginBottom: 8 },
   entryDir: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginRight: 8 },
+  entryDirDebit: { backgroundColor: '#3B7DD8' },
+  entryDirCredit: { backgroundColor: '#E67E22' },
+  entryDirText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   entryAcc: { flex: 1 },
   entryAccText: { fontSize: 15, color: '#333' },
   entryInput: { width: 90, textAlign: 'right', fontSize: 16, fontWeight: '600', padding: 0 },
   entryDel: { marginLeft: 12, paddingHorizontal: 4 },
+  entryDeleteText: { color: '#E63946', fontSize: 20 },
   entryAdd: { alignItems: 'center', paddingVertical: 12, borderWidth: 1, borderColor: '#E0E0E0', borderStyle: 'dashed', borderRadius: 12 },
+  entryAddText: { color: '#666' },
+  advancedBottomSpacer: { height: 12 },
 
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   overlayMid: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%' },
   sheetLine: { width: 40, height: 4, backgroundColor: '#E0E0E0', borderRadius: 2, alignSelf: 'center', marginTop: 12 },
   sheetTitle: { fontSize: 16, fontWeight: '600', textAlign: 'center', paddingVertical: 16 },
+  sheetScrollContent: { padding: 20 },
+  sheetGroup: { marginBottom: 20 },
   sheetGrp: { fontSize: 13, color: '#999', marginBottom: 12 },
   sheetChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   sheetChip: { backgroundColor: '#F5F6F8', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
   sheetChipText: { fontSize: 14, color: '#333' },
+  sheetEmptyText: { textAlign: 'center', color: '#ccc', marginVertical: 30 },
 
   bookCard: { width: '80%', backgroundColor: '#FFF', borderRadius: 16, padding: 20 },
   bookRow: { paddingVertical: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#F0F0F0' },
   bookRowAc: { backgroundColor: '#F9F9F9' },
-  bookName: { fontSize: 16, textAlign: 'center', color: '#666' }
+  bookName: { fontSize: 16, textAlign: 'center', color: '#666' },
+  bookNameActive: { fontWeight: '700', color: '#111' }
 });
 
 export default AddScreen;

@@ -1,17 +1,19 @@
 import React, {useState} from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  StatusBar,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+
+import {getErrorMessage} from '../services/errors';
 import {login, saveAuthTokens} from '../services/auth';
 
 interface LoginScreenProps {
@@ -33,10 +35,9 @@ const LoginScreen = ({onLoginSuccess}: LoginScreenProps) => {
     try {
       const loginResponse = await login(username, password);
       await saveAuthTokens(loginResponse);
-      const {token} = loginResponse;
-      onLoginSuccess(token);
-    } catch (err: any) {
-      Alert.alert('登录失败', err.message || '请稍后重试');
+      onLoginSuccess(loginResponse.token);
+    } catch (err) {
+      Alert.alert('登录失败', getErrorMessage(err, '请重试'));
     } finally {
       setLoading(false);
     }
@@ -51,7 +52,7 @@ const LoginScreen = ({onLoginSuccess}: LoginScreenProps) => {
         <View style={styles.logoArea}>
           <Text style={styles.logoIcon}>💰</Text>
           <Text style={styles.logoTitle}>LifeHub 记账</Text>
-          <Text style={styles.logoSubtitle}>管理你的每一笔收支</Text>
+          <Text style={styles.logoSubtitle}>账本管理与统计分析</Text>
         </View>
 
         <View style={styles.form}>
@@ -92,11 +93,9 @@ const LoginScreen = ({onLoginSuccess}: LoginScreenProps) => {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.loginBtnText}>登 录</Text>
+              <Text style={styles.loginBtnText}>登录</Text>
             )}
           </TouchableOpacity>
-
-          {/* <Text style={styles.hint}>测试账号提示</Text> */}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -160,12 +159,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: 4,
-  },
-  hint: {
-    textAlign: 'center',
-    color: '#B0B8C4',
-    fontSize: 12,
-    marginTop: 8,
   },
 });
 

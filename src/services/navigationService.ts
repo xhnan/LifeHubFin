@@ -1,63 +1,51 @@
-import { createNavigationContainerRef } from '@react-navigation/native';
-import { removeAuthTokens } from './auth';
+import {createNavigationContainerRef} from '@react-navigation/native';
 
-export const navigationRef = createNavigationContainerRef();
+import type {RootStackParamList} from '../navigation/types';
+import {removeAuthTokens} from './auth';
+
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 let tokenExpiredCallback: (() => void) | null = null;
 
-/**
- * 注册 Token 过期回调
- */
 export function registerTokenExpiredCallback(callback: () => void) {
   tokenExpiredCallback = callback;
 }
 
-/**
- * 处理 Token 过期
- */
 export async function handleTokenExpired() {
-  // 清除本地登录态
   await removeAuthTokens();
 
-  // 调用回调函数，通知 App 组件更新状态
   if (tokenExpiredCallback) {
     tokenExpiredCallback();
   }
 }
 
-/**
- * 导航辅助函数
- */
-export function navigate(name: string, params?: any) {
+export function navigate<RouteName extends keyof RootStackParamList>(
+  name: RouteName,
+  params?: RootStackParamList[RouteName],
+) {
   if (navigationRef.isReady()) {
-    (navigationRef as any).navigate(name, params);
+    navigationRef.navigate(name, params);
   }
 }
 
-/**
- * 重置导航到指定页面
- */
-export function reset(name: string, params?: any) {
+export function reset<RouteName extends keyof RootStackParamList>(
+  name: RouteName,
+  params?: RootStackParamList[RouteName],
+) {
   if (navigationRef.isReady()) {
     navigationRef.resetRoot({
       index: 0,
-      routes: [{ name, params }],
-    } as never);
+      routes: [{name, params}],
+    });
   }
 }
 
-/**
- * 返回上一页
- */
 export function goBack() {
   if (navigationRef.isReady() && navigationRef.canGoBack()) {
     navigationRef.goBack();
   }
 }
 
-/**
- * 退出登录
- */
 export async function logout() {
   await handleTokenExpired();
 }

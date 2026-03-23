@@ -139,7 +139,7 @@ const ChartScreen = () => {
             <View style={s.overviewDivider} />
             <View style={s.overviewItem}>
               <Text style={s.overviewLabel}>结余</Text>
-              <Text style={[s.overviewBal, bal < 0 && {color: '#FF6B6B'}]}>¥{bal.toFixed(2)}</Text>
+              <Text style={[s.overviewBal, bal < 0 && s.negativeRedText]}>¥{bal.toFixed(2)}</Text>
             </View>
           </View>
           {/* 比例条 */}
@@ -157,8 +157,8 @@ const ChartScreen = () => {
         <View style={s.card}>
           <Text style={s.cardTitle}>📈 {year}年趋势</Text>
           <View style={s.trendLegend}>
-            <View style={s.legendItem}><View style={[s.legendDot, {backgroundColor: '#51CF66'}]} /><Text style={s.legendText}>收入</Text></View>
-            <View style={s.legendItem}><View style={[s.legendDot, {backgroundColor: '#FF6B6B'}]} /><Text style={s.legendText}>支出</Text></View>
+            <View style={s.legendItem}><View style={[s.legendDot, s.legendDotIncome]} /><Text style={s.legendText}>收入</Text></View>
+            <View style={s.legendItem}><View style={[s.legendDot, s.legendDotExpense]} /><Text style={s.legendText}>支出</Text></View>
           </View>
           {yearTrend.length > 0 ? yearTrend.map(m => {
             const incW = Math.max((m.income / maxBar) * (SW - 180), 2);
@@ -222,7 +222,7 @@ const ChartScreen = () => {
         <View style={s.card}>
           <View style={s.rankTotalRow}>
             <Text style={s.rankTotalLabel}>{rankType === 'EXPENSE' ? '总支出' : '总收入'}</Text>
-            <Text style={[s.rankTotalAmount, rankType === 'EXPENSE' ? {color: '#FF6B6B'} : {color: '#51CF66'}]}>
+            <Text style={[s.rankTotalAmount, rankType === 'EXPENSE' ? s.rankTotalAmountExpense : s.rankTotalAmountIncome]}>
               ¥{total.toFixed(2)}
             </Text>
           </View>
@@ -231,12 +231,13 @@ const ChartScreen = () => {
         {/* 分类列表 */}
         {cats.length > 0 ? cats.map((c, i) => {
           const color = RANK_COLORS[i % RANK_COLORS.length];
+          const rankColorStyle = i < 3 ? {color} : undefined;
           const barW = Math.max((c.amount / maxAmt) * 100, 3);
           return (
             <View key={`${c.accountId}_${i}`} style={s.card}>
               <View style={s.catRow}>
                 <View style={s.catRank}>
-                  <Text style={[s.catRankNum, i < 3 && {color}]}>{i + 1}</Text>
+                  <Text style={[s.catRankNum, rankColorStyle]}>{i + 1}</Text>
                 </View>
                 <View style={s.catIconWrap}>
                   <IconifyIcon icon={c.accountIcon} size={20} color={color} fallback="📁" />
@@ -269,7 +270,7 @@ const ChartScreen = () => {
         {/* 净资产卡 */}
         <View style={s.netWorthCard}>
           <Text style={s.netWorthLabel}>净资产</Text>
-          <Text style={[s.netWorthAmount, netWorth < 0 && {color: '#FF6B6B'}]}>
+          <Text style={[s.netWorthAmount, netWorth < 0 && s.negativeRedText]}>
             ¥{netWorth.toFixed(2)}
           </Text>
           <View style={s.netWorthRow}>
@@ -312,11 +313,11 @@ const ChartScreen = () => {
               <View key={`l_${a.accountId}_${i}`}>
                 {i > 0 && <View style={s.listDivider} />}
                 <View style={s.balanceRow}>
-                  <View style={[s.balanceIconWrap, {backgroundColor: '#FFF0F0'}]}>
+                  <View style={[s.balanceIconWrap, s.balanceIconWrapLiability]}>
                     <IconifyIcon icon={a.accountIcon} size={20} color="#FF6B6B" fallback="💳" />
                   </View>
                   <Text style={s.balanceName}>{a.accountName}</Text>
-                  <Text style={[s.balanceAmount, {color: '#FF6B6B'}]}>¥{a.balance.toFixed(2)}</Text>
+                  <Text style={[s.balanceAmount, s.balanceAmountExpense]}>¥{a.balance.toFixed(2)}</Text>
                 </View>
               </View>
             ))}
@@ -458,11 +459,11 @@ const ChartScreen = () => {
           {/* 图例 */}
           <View style={s.calendarLegend}>
             <View style={s.legendItem}>
-              <View style={[s.legendDot, {backgroundColor: '#51CF66'}]} />
+              <View style={[s.legendDot, s.legendDotIncome]} />
               <Text style={s.legendText}>收入</Text>
             </View>
             <View style={s.legendItem}>
-              <View style={[s.legendDot, {backgroundColor: '#FF6B6B'}]} />
+              <View style={[s.legendDot, s.legendDotExpense]} />
               <Text style={s.legendText}>支出</Text>
             </View>
           </View>
@@ -487,7 +488,7 @@ const ChartScreen = () => {
                   </View>
                   <View style={s.dateDetailRow}>
                     <Text style={s.dateDetailLabel}>结余</Text>
-                    <Text style={[s.dateDetailBal, (data.income - data.expense) < 0 && {color: '#FF6B6B'}]}>
+                    <Text style={[s.dateDetailBal, (data.income - data.expense) < 0 && s.negativeRedText]}>
                       ¥{(data.income - data.expense).toFixed(2)}
                     </Text>
                   </View>
@@ -566,7 +567,7 @@ const ChartScreen = () => {
         {loading ? (
           <View style={s.emptyWrap}><ActivityIndicator size="large" color="#3B7DD8" /></View>
         ) : tab === 'overview' ? renderOverview() : tab === 'category' ? renderCategory() : tab === 'calendar' ? renderCalendar() : renderAsset()}
-        <View style={{height: 30}} />
+        <View style={s.bottomSpacer} />
       </ScrollView>
 
       <MonthPicker
@@ -621,6 +622,7 @@ const s = StyleSheet.create({
   overviewInc: {fontSize: 17, fontWeight: '800', color: '#51CF66'},
   overviewExp: {fontSize: 17, fontWeight: '800', color: '#FF6B6B'},
   overviewBal: {fontSize: 17, fontWeight: '800', color: '#339AF0'},
+  negativeRedText: {color: '#FF6B6B'},
 
   ratioBar: {flexDirection: 'row', height: 8, borderRadius: 4, overflow: 'hidden', backgroundColor: '#F0F2F5'},
   ratioInc: {backgroundColor: '#51CF66'},
@@ -633,6 +635,8 @@ const s = StyleSheet.create({
   trendLegend: {flexDirection: 'row', gap: 16, marginBottom: 12},
   legendItem: {flexDirection: 'row', alignItems: 'center', gap: 6},
   legendDot: {width: 8, height: 8, borderRadius: 4},
+  legendDotIncome: {backgroundColor: '#51CF66'},
+  legendDotExpense: {backgroundColor: '#FF6B6B'},
   legendText: {fontSize: 12, color: '#999'},
   trendRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: 5},
   trendRowCurrent: {backgroundColor: '#F0F6FF', borderRadius: 8, marginHorizontal: -8, paddingHorizontal: 8},
@@ -664,6 +668,8 @@ const s = StyleSheet.create({
   rankTotalRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
   rankTotalLabel: {fontSize: 14, color: '#999'},
   rankTotalAmount: {fontSize: 22, fontWeight: '800'},
+  rankTotalAmountExpense: {color: '#FF6B6B'},
+  rankTotalAmountIncome: {color: '#51CF66'},
 
   catRow: {flexDirection: 'row', alignItems: 'center'},
   catRank: {width: 24, alignItems: 'center'},
@@ -690,8 +696,10 @@ const s = StyleSheet.create({
 
   balanceRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: 14},
   balanceIconWrap: {width: 36, height: 36, borderRadius: 12, backgroundColor: '#F0F6FF', alignItems: 'center', justifyContent: 'center', marginRight: 12},
+  balanceIconWrapLiability: {backgroundColor: '#FFF0F0'},
   balanceName: {flex: 1, fontSize: 14, fontWeight: '500', color: '#333'},
   balanceAmount: {fontSize: 15, fontWeight: '700', color: '#1A1A2E'},
+  balanceAmountExpense: {color: '#FF6B6B'},
   listDivider: {height: StyleSheet.hairlineWidth, backgroundColor: '#F0F2F5', marginLeft: 48},
 
   // Calendar - 优化版本
@@ -853,6 +861,7 @@ const s = StyleSheet.create({
   emptyWrap: {alignItems: 'center', justifyContent: 'center', paddingVertical: 60},
   emptyIcon: {fontSize: 48, marginBottom: 12},
   emptyText: {fontSize: 14, color: '#C8CDD5'},
+  bottomSpacer: {height: 30},
 });
 
 export default ChartScreen;

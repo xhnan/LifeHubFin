@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Animated,
-  Dimensions,
 } from 'react-native';
 import type {VersionCheckResponse} from '../types/version';
 import {
@@ -15,8 +14,6 @@ import {
   installAPK,
   EnhancedDownloadProgress,
 } from '../services/updateManager';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
 
 interface UpdateModalProps {
   visible: boolean;
@@ -44,7 +41,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
     } else {
       progressAnim.setValue(0);
     }
-  }, [progress?.progress]);
+  }, [progress, progressAnim]);
 
   const handleUpdate = async () => {
     if (!versionInfo?.fileUrl) {

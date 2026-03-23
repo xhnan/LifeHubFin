@@ -3,18 +3,30 @@ import {authFetch} from './api';
 import {APP_VERSION_CODE} from '../config/version';
 import type {VersionCheckResponse} from '../types/version';
 
-/**
- * 检查应用更新的结果类型
- */
+const AUTO_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
+const NETWORK_ERROR_FALLBACK = '\u7f51\u7edc\u8fde\u63a5\u5931\u8d25';
+
+let lastAutoCheckAt = 0;
+
+export function consumeAutoCheckWindow(now = Date.now()): boolean {
+  if (lastAutoCheckAt !== 0 && now - lastAutoCheckAt < AUTO_CHECK_MIN_INTERVAL_MS) {
+    return false;
+  }
+
+  lastAutoCheckAt = now;
+  return true;
+}
+
+export function resetAutoCheckWindowForTesting() {
+  lastAutoCheckAt = 0;
+}
+
 export interface VersionCheckResult {
   hasUpdate: boolean;
   data?: VersionCheckResponse;
   error?: string;
 }
 
-/**
- * 检查应用更新
- */
 export async function checkForUpdates(): Promise<VersionCheckResponse | null> {
   try {
     const params = new URLSearchParams({
@@ -26,22 +38,25 @@ export async function checkForUpdates(): Promise<VersionCheckResponse | null> {
       `/sys/app-version/app/app-version/check?${params.toString()}`,
     );
 
-    // 如果没有更新，返回 null
     if (!response.hasUpdate) {
       return null;
     }
 
     return response;
   } catch (error) {
-    console.error('版本检查失败:', error);
-    // 网络失败时返回 null，允许用户继续使用
+    console.error('[VersionCheck] automatic check failed', error);
     return null;
   }
 }
 
-/**
- * 手动检查更新（返回更详细的结果）
- */
+export async function checkForUpdatesAuto(): Promise<VersionCheckResponse | null> {
+  if (!consumeAutoCheckWindow()) {
+    return null;
+  }
+
+  return checkForUpdates();
+}
+
 export async function checkForUpdatesManual(): Promise<VersionCheckResult> {
   try {
     const params = new URLSearchParams({
@@ -50,14 +65,14 @@ export async function checkForUpdatesManual(): Promise<VersionCheckResult> {
     });
 
     const url = `/sys/app-version/app/app-version/check?${params.toString()}`;
-    console.log('[VersionCheck] 正在检查更新...', {
+    console.log('[VersionCheck] checking for updates', {
       versionCode: APP_VERSION_CODE,
       platform: Platform.OS,
     });
 
     const response = await authFetch<VersionCheckResponse>(url);
 
-    console.log('[VersionCheck] 检查完成:', {
+    console.log('[VersionCheck] check completed', {
       hasUpdate: response.hasUpdate,
       latestVersion: response.versionName,
     });
@@ -66,11 +81,11 @@ export async function checkForUpdatesManual(): Promise<VersionCheckResult> {
       hasUpdate: response.hasUpdate,
       data: response.hasUpdate ? response : undefined,
     };
-  } catch (error: any) {
-    console.error('[VersionCheck] 检查失败:', error);
+  } catch (error) {
+    console.error('[VersionCheck] manual check failed', error);
     return {
       hasUpdate: false,
-      error: error.message || '网络连接失败',
+      error: error instanceof Error ? error.message : NETWORK_ERROR_FALLBACK,
     };
   }
 }

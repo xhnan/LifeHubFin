@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 
 interface IconifyIconProps {
@@ -119,7 +119,7 @@ const IconifyIcon = ({
         if (!mountedRef.current) return;
         setFailed(true);
       });
-  }, [icon]); // Only re-fetch when icon itself changes
+  }, [color, icon, isIconify]); // Only re-fetch when icon itself changes
 
   // When color changes, just re-apply from cache (no re-fetch)
   useEffect(() => {
@@ -128,7 +128,7 @@ const IconifyIcon = ({
     if (cached) {
       setSvgXml(color ? applySvgColor(cached, color) : cached);
     }
-  }, [color]);
+  }, [color, icon, isIconify]);
 
   // Non-iconify format: render as text
   if (!isIconify) {
@@ -151,11 +151,10 @@ const IconifyIcon = ({
     // Show fallback while loading (not an error — still loading)
     return (
       <Text
-        style={{
-          fontSize: size * 0.8,
-          color: color || undefined,
-          opacity: 0.3,
-        }}
+        style={[
+          styles.loadingFallback,
+          { fontSize: size * 0.8, color: color || undefined },
+        ]}
       >
         {fallback}
       </Text>
@@ -164,5 +163,11 @@ const IconifyIcon = ({
 
   return <SvgXml xml={svgXml} width={size} height={size} />;
 };
+
+const styles = StyleSheet.create({
+  loadingFallback: {
+    opacity: 0.3,
+  },
+});
 
 export default IconifyIcon;

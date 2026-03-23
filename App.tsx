@@ -1,10 +1,9 @@
-import React, {useCallback, useEffect, useState} from 'react';
-import {AppState, Platform, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import React, {useEffect} from 'react';
+import {Linking, Platform, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NavigationContainer, useNavigation} from '@react-navigation/native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
-import SplashScreen from 'react-native-splash-screen';
 
 import DetailScreen from './src/screens/DetailScreen';
 import ChartScreen from './src/screens/ChartScreen';
@@ -16,31 +15,22 @@ import LoginScreen from './src/screens/LoginScreen';
 import ReceiptScreen from './src/screens/ReceiptScreen';
 import TransactionDetailScreen from './src/screens/TransactionDetailScreen';
 import {UpdateModal} from './src/components/UpdateModal';
-import {getToken} from './src/services/auth';
+import {ROUTES} from './src/constants/routes';
+import {useAppStartup} from './src/hooks/useAppStartup';
+import type {
+  MainTabNavigationProp,
+  MainTabParamList,
+  RootStackParamList,
+} from './src/navigation/types';
 import NativeImageHandler, {
   type EmitterSubscription,
 } from './src/services/nativeImageHandler';
-import {registerTokenExpiredCallback} from './src/services/navigationService';
-import {cleanupUpdateCache} from './src/services/updateManager';
-import {checkForUpdates} from './src/services/versionCheck';
+import {navigationRef} from './src/services/navigationService';
 import {FinanceStoreProvider} from './src/store/FinanceStore';
-import type {VersionCheckResponse} from './src/types/version';
 
-const Tab = createBottomTabNavigator();
-const Stack = createNativeStackNavigator();
-
-const ROUTES = {
-  home: '\u4e3b\u9875',
-  detail: '\u660e\u7ec6',
-  chart: '\u56fe\u8868',
-  add: '\u8bb0\u8d26',
-  addPlaceholder: '\u8bb0\u8d26\u5360\u4f4d',
-  discover: '\u53d1\u73b0',
-  profile: '\u6211\u7684',
-  bookManage: '\u8d26\u672c\u7ba1\u7406',
-  receipt: '\u62cd\u7167\u8bb0\u8d26',
-  transactionDetail: '\u8d26\u5355\u8be6\u60c5',
-} as const;
+const Tab = createBottomTabNavigator<MainTabParamList>();
+const Stack = createNativeStackNavigator<RootStackParamList>();
+const TAB_ICON_TEXT_STYLE = {fontSize: 22} as const;
 
 const TAB_ICONS: Record<string, string> = {
   [ROUTES.detail]: '\u{1F4CB}',
@@ -54,7 +44,7 @@ const TabIcon = ({label, focused}: {label: string; focused: boolean}) => {
 
   return (
     <View style={styles.tabIcon}>
-      <Text style={{fontSize: 22}}>{TAB_ICONS[label]}</Text>
+      <Text style={TAB_ICON_TEXT_STYLE}>{TAB_ICONS[label]}</Text>
       <Text style={[styles.tabLabel, {color}]}>{label}</Text>
       {focused && <View style={styles.tabDot} />}
     </View>
@@ -62,7 +52,7 @@ const TabIcon = ({label, focused}: {label: string; focused: boolean}) => {
 };
 
 const AddButton = () => {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<MainTabNavigationProp<typeof ROUTES.detail>>();
 
   return (
     <TouchableOpacity
@@ -83,6 +73,32 @@ const AddButton = () => {
 
 const Placeholder = () => <View />;
 
+const createTabIcon =
+  (label: string) =>
+  ({focused}: {focused: boolean}) => <TabIcon label={label} focused={focused} />;
+
+const renderAddButton = () => <AddButton />;
+
+const detailTabOptions = {
+  tabBarIcon: createTabIcon(ROUTES.detail),
+};
+
+const chartTabOptions = {
+  tabBarIcon: createTabIcon(ROUTES.chart),
+};
+
+const addPlaceholderOptions = {
+  tabBarButton: renderAddButton,
+};
+
+const discoverTabOptions = {
+  tabBarIcon: createTabIcon(ROUTES.discover),
+};
+
+const profileTabOptions = {
+  tabBarIcon: createTabIcon(ROUTES.profile),
+};
+
 const TabNavigator = () => (
   <Tab.Navigator
     screenOptions={{
@@ -93,23 +109,17 @@ const TabNavigator = () => (
     <Tab.Screen
       name={ROUTES.detail}
       component={DetailScreen}
-      options={{
-        tabBarIcon: ({focused}) => <TabIcon label={ROUTES.detail} focused={focused} />,
-      }}
+      options={detailTabOptions}
     />
     <Tab.Screen
       name={ROUTES.chart}
       component={ChartScreen}
-      options={{
-        tabBarIcon: ({focused}) => <TabIcon label={ROUTES.chart} focused={focused} />,
-      }}
+      options={chartTabOptions}
     />
     <Tab.Screen
       name={ROUTES.addPlaceholder}
       component={Placeholder}
-      options={{
-        tabBarButton: () => <AddButton />,
-      }}
+      options={addPlaceholderOptions}
       listeners={{
         tabPress: e => e.preventDefault(),
       }}
@@ -117,71 +127,74 @@ const TabNavigator = () => (
     <Tab.Screen
       name={ROUTES.discover}
       component={DiscoverScreen}
-      options={{
-        tabBarIcon: ({focused}) => <TabIcon label={ROUTES.discover} focused={focused} />,
-      }}
+      options={discoverTabOptions}
     />
     <Tab.Screen
       name={ROUTES.profile}
       component={ProfileScreen}
-      options={{
-        tabBarIcon: ({focused}) => <TabIcon label={ROUTES.profile} focused={focused} />,
-      }}
+      options={profileTabOptions}
     />
   </Tab.Navigator>
 );
 
 const App = () => {
-  const navigationRef = React.useRef<any>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [authInitialized, setAuthInitialized] = useState(false);
-  const [versionInfo, setVersionInfo] = useState<VersionCheckResponse | null>(null);
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const {
+    authInitialized,
+    token,
+    versionInfo,
+    showUpdateModal,
+    handleLoginSuccess,
+    closeUpdateModal,
+  } = useAppStartup();
 
-  React.useEffect(() => {
-    if (navigationRef.current) {
-      (global as any).navigationRef = navigationRef;
-    }
-  }, [token]);
+  useEffect(() => {
+    const handleUrl = ({url}: {url: string}) => {
+      if ((url === 'lifehubfin://add' || url === 'add') && navigationRef.isReady()) {
+        navigationRef.navigate(ROUTES.add);
+      }
+    };
 
-  React.useEffect(() => {
-    let isMounted = true;
+    const subscription = Linking.addEventListener('url', handleUrl);
+    let interval: ReturnType<typeof setInterval> | null = null;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
 
-    import('react-native').then(({Linking}) => {
-      const handleUrl = ({url}: {url: string}) => {
-        if ((url === 'lifehubfin://add' || url === 'add') && navigationRef.current?.isReady()) {
-          navigationRef.current.navigate(ROUTES.add);
-        }
-      };
+    Linking.getInitialURL().then(url => {
+      if (cancelled || (url !== 'lifehubfin://add' && url !== 'add')) {
+        return;
+      }
 
-      const subscription = Linking.addEventListener('url', handleUrl);
-
-      Linking.getInitialURL().then(url => {
-        if (!isMounted || (url !== 'lifehubfin://add' && url !== 'add')) {
-          return;
-        }
-
-        const interval = setInterval(() => {
-          if (navigationRef.current?.isReady()) {
+      interval = setInterval(() => {
+        if (navigationRef.isReady()) {
+          if (interval) {
             clearInterval(interval);
-            navigationRef.current.navigate(ROUTES.add);
+            interval = null;
           }
-        }, 50);
+          navigationRef.navigate(ROUTES.add);
+        }
+      }, 50);
 
-        setTimeout(() => clearInterval(interval), 3000);
-      });
-
-      return () => {
-        subscription.remove();
-      };
+      timeout = setTimeout(() => {
+        if (interval) {
+          clearInterval(interval);
+          interval = null;
+        }
+      }, 3000);
     });
 
     return () => {
-      isMounted = false;
+      cancelled = true;
+      subscription.remove();
+      if (interval) {
+        clearInterval(interval);
+      }
+      if (timeout) {
+        clearTimeout(timeout);
+      }
     };
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (Platform.OS !== 'android' || !token) {
       return;
     }
@@ -212,53 +225,6 @@ const App = () => {
       subscription?.remove();
     };
   }, [token]);
-
-  useEffect(() => {
-    cleanupUpdateCache().catch(err => {
-      console.warn('[App] cleanup update cache failed:', err);
-    });
-
-    registerTokenExpiredCallback(() => {
-      setToken(null);
-    });
-
-    getToken()
-      .then(t => {
-        setToken(t);
-
-        if (t) {
-          checkForUpdates().then(info => {
-            if (info) {
-              setVersionInfo(info);
-              setShowUpdateModal(true);
-            }
-          });
-        }
-      })
-      .finally(() => {
-        setAuthInitialized(true);
-        SplashScreen.hide();
-      });
-  }, []);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', nextAppState => {
-      if (nextAppState === 'active' && token) {
-        checkForUpdates().then(info => {
-          if (info) {
-            setVersionInfo(info);
-            setShowUpdateModal(true);
-          }
-        });
-      }
-    });
-
-    return () => subscription?.remove();
-  }, [token]);
-
-  const handleLoginSuccess = useCallback((t: string) => {
-    setToken(t);
-  }, []);
 
   if (!authInitialized) {
     return null;
@@ -316,7 +282,7 @@ const App = () => {
         <UpdateModal
           visible={showUpdateModal}
           versionInfo={versionInfo}
-          onClose={() => setShowUpdateModal(false)}
+          onClose={closeUpdateModal}
         />
       </FinanceStoreProvider>
     </SafeAreaProvider>

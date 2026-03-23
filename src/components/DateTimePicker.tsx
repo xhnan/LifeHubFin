@@ -213,7 +213,7 @@ const WheelPicker: React.FC<WheelPickerProps> = ({ items, selectedValue, onSelec
         animated: false,
       });
     }
-  }, []);
+  }, [items, selectedValue]);
 
   return (
     <View style={[s.wheelPicker, { height: itemHeight * visibleItemCount }]}>

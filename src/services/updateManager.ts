@@ -29,6 +29,7 @@ function formatBytes(bytes: number): string {
 /**
  * 格式化时间
  */
+/* eslint-disable-next-line @typescript-eslint/no-unused-vars */
 function formatTime(seconds: number): string {
   if (seconds < 60) return `${Math.round(seconds)}秒`;
   if (seconds < 3600) return `${Math.round(seconds / 60)}分钟`;

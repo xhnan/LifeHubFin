@@ -5,10 +5,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   Modal,
-  Dimensions,
 } from 'react-native';
 
-const SCREEN_W = Dimensions.get('window').width;
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
 export interface QuickOption {

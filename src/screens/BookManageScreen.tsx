@@ -1,24 +1,32 @@
-import React, {useState, useCallback} from 'react';
+import React, {useCallback, useState} from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  StatusBar,
   ActivityIndicator,
+  FlatList,
   RefreshControl,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
-import {getMyBooks, Book} from '../services/book';
+
+import {ROUTES} from '../constants/routes';
+import type {RootStackNavigationPropType} from '../navigation/types';
+import {getMyBooks, type Book} from '../services/book';
+import {getErrorMessage} from '../services/errors';
 
 const CURRENCY_LABEL: Record<string, string> = {
   CNY: '¥ 人民币',
   SGD: 'S$ 新加坡元',
 };
 
-const BookManageScreen = ({navigation}: any) => {
+const BookManageScreen = ({
+  navigation,
+}: {
+  navigation: RootStackNavigationPropType<typeof ROUTES.bookManage>;
+}) => {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -28,18 +36,17 @@ const BookManageScreen = ({navigation}: any) => {
     useCallback(() => {
       let cancelled = false;
       setLoading(true);
+
       getMyBooks()
         .then(data => {
-          console.log('>>> getMyBooks result:', JSON.stringify(data));
           if (!cancelled) {
             setBooks(Array.isArray(data) ? data : []);
             setError('');
           }
         })
-        .catch((err: any) => {
-          console.log('>>> getMyBooks error:', err);
+        .catch(err => {
           if (!cancelled) {
-            setError(err.message || '加载失败');
+            setError(getErrorMessage(err, '加载失败'));
           }
         })
         .finally(() => {
@@ -47,6 +54,7 @@ const BookManageScreen = ({navigation}: any) => {
             setLoading(false);
           }
         });
+
       return () => {
         cancelled = true;
       };
@@ -59,8 +67,8 @@ const BookManageScreen = ({navigation}: any) => {
       const data = await getMyBooks();
       setBooks(Array.isArray(data) ? data : []);
       setError('');
-    } catch (err: any) {
-      setError(err.message || '加载失败');
+    } catch (err) {
+      setError(getErrorMessage(err, '加载失败'));
     } finally {
       setRefreshing(false);
     }
@@ -68,7 +76,7 @@ const BookManageScreen = ({navigation}: any) => {
 
   const renderItem = ({item}: {item: Book}) => (
     <View style={styles.bookItem}>
-      <Text style={styles.bookIcon}>📒</Text>
+      <Text style={styles.bookIcon}>📚</Text>
       <View style={styles.bookInfo}>
         <Text style={styles.bookName}>{item.name}</Text>
         {item.description ? (
@@ -92,6 +100,7 @@ const BookManageScreen = ({navigation}: any) => {
         </View>
       );
     }
+
     if (error) {
       return (
         <View style={styles.center}>
@@ -102,6 +111,7 @@ const BookManageScreen = ({navigation}: any) => {
         </View>
       );
     }
+
     if (books.length === 0) {
       return (
         <View style={styles.center}>
@@ -109,15 +119,14 @@ const BookManageScreen = ({navigation}: any) => {
         </View>
       );
     }
+
     return (
       <FlatList
         data={books}
         keyExtractor={item => String(item.id)}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       />
     );
   };

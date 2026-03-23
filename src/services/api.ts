@@ -1,8 +1,24 @@
 import {getToken, refreshAccessToken, saveAuthTokens} from './auth';
+import {AuthError, NetworkError, ServerError} from './errors';
 import {handleTokenExpired} from './navigationService';
 import {API_BASE_URL} from '../config/api';
 
 export const BASE_URL = API_BASE_URL;
+
+const TOKEN_EXPIRED_MESSAGE_PATTERNS = [
+  'jwt expired',
+  'token\u5df2\u8fc7\u671f',
+  'token\u8fc7\u671f',
+  '\u767b\u5f55\u72b6\u6001\u5df2\u5931\u6548',
+  '\u8bf7\u91cd\u65b0\u767b\u5f55',
+] as const;
+
+const EMPTY_RESPONSE_MESSAGE = '\u670d\u52a1\u5668\u54cd\u5e94\u4e3a\u7a7a';
+const INVALID_RESPONSE_MESSAGE = '\u670d\u52a1\u5668\u54cd\u5e94\u683c\u5f0f\u9519\u8bef';
+const NETWORK_ERROR_MESSAGE = '\u7f51\u7edc\u8fde\u63a5\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5';
+const AUTH_EXPIRED_MESSAGE =
+  '\u767b\u5f55\u72b6\u6001\u5df2\u5931\u6548\uff0c\u8bf7\u91cd\u65b0\u767b\u5f55';
+const REQUEST_FAILED_MESSAGE = '\u8bf7\u6c42\u5931\u8d25';
 
 export interface ResponseResult<T> {
   code: number;
@@ -15,15 +31,11 @@ export interface ResponseResult<T> {
 let refreshTokenPromise: Promise<string | null> | null = null;
 
 function isTokenExpiredResult(result: ResponseResult<unknown>): boolean {
-  const errorMessage = result.message || '';
+  const errorMessage = (result.message || '').trim().toLowerCase();
 
   return (
-    errorMessage.includes('Token已过期') ||
-    errorMessage.includes('JWT expired') ||
-    errorMessage.includes('Token过期') ||
-    errorMessage.includes('Expired') ||
-    errorMessage.includes('请重新登录') ||
-    result.code === 401
+    result.code === 401 ||
+    TOKEN_EXPIRED_MESSAGE_PATTERNS.some(pattern => errorMessage.includes(pattern))
   );
 }
 
@@ -31,15 +43,15 @@ async function parseResponseResult<T>(res: Response): Promise<ResponseResult<T>>
   const text = await res.text();
 
   if (!text.trim()) {
-    throw new Error('服务器响应为空');
+    throw new ServerError(EMPTY_RESPONSE_MESSAGE);
   }
 
   const safeText = text.replace(/:\s*(\d{16,})/g, ': "$1"');
 
   try {
     return JSON.parse(safeText);
-  } catch {
-    throw new Error('服务器响应格式错误');
+  } catch (error) {
+    throw new ServerError(INVALID_RESPONSE_MESSAGE, {cause: error});
   }
 }
 
@@ -67,19 +79,26 @@ async function sendRequest(
   options: RequestInit,
   token: string | null,
 ): Promise<Response> {
-  return fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? {Authorization: `Bearer ${token}`} : {}),
-      ...options.headers,
-    },
+  try {
+    return await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? {Authorization: `Bearer ${token}`} : {}),
+        ...options.headers,
+      },
+    });
+  } catch (error) {
+    throw new NetworkError(NETWORK_ERROR_MESSAGE, {cause: error});
+  }
+}
+
+function createAuthExpiredError(): AuthError {
+  return new AuthError(AUTH_EXPIRED_MESSAGE, {
+    isTokenExpired: true,
   });
 }
 
-/**
- * 带 JWT 认证的通用请求方法
- */
 export async function authFetch<T>(
   path: string,
   options: RequestInit = {},
@@ -91,9 +110,7 @@ export async function authFetch<T>(
     const newToken = await tryRefreshToken();
 
     if (!newToken) {
-      const error = new Error('登录已过期，请重新登录');
-      (error as any).isTokenExpired = true;
-      throw error;
+      throw createAuthExpiredError();
     }
 
     res = await sendRequest(path, options, newToken);
@@ -105,9 +122,7 @@ export async function authFetch<T>(
     const newToken = await tryRefreshToken();
 
     if (!newToken) {
-      const error = new Error('登录已过期，请重新登录');
-      (error as any).isTokenExpired = true;
-      throw error;
+      throw createAuthExpiredError();
     }
 
     res = await sendRequest(path, options, newToken);
@@ -115,14 +130,23 @@ export async function authFetch<T>(
 
     if (res.status === 401 || isTokenExpiredResult(result)) {
       await handleTokenExpired();
-      const error = new Error('登录已过期，请重新登录');
-      (error as any).isTokenExpired = true;
-      throw error;
+      throw createAuthExpiredError();
     }
   }
 
   if (!res.ok || result.code !== 200) {
-    throw new Error(result.message || '请求失败');
+    if (res.status === 401 || result.code === 401) {
+      throw new AuthError(result.message || AUTH_EXPIRED_MESSAGE, {
+        code: result.code || res.status,
+        details: result,
+        isTokenExpired: true,
+      });
+    }
+
+    throw new ServerError(result.message || REQUEST_FAILED_MESSAGE, {
+      code: result.code || res.status,
+      details: result,
+    });
   }
 
   return result.data;
