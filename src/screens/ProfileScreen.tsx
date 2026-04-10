@@ -20,6 +20,8 @@ import {checkForUpdatesManual} from '../services/versionCheck';
 
 const MENU_ITEMS = [
   {icon: '📚', label: '账本管理', route: ROUTES.bookManage},
+  {icon: '💳', label: '账户管理', route: ROUTES.accountManage},
+  {icon: '📸', label: '扫一扫', route: ROUTES.qrScanner},
   {icon: '🏷️', label: '标签管理'},
   {icon: '📤', label: '数据导出'},
   {icon: '🔔', label: '提醒设置'},
@@ -85,6 +87,16 @@ const ProfileScreen = () => {
 
     if (item.route === ROUTES.bookManage) {
       navigation.navigate(ROUTES.bookManage);
+      return;
+    }
+
+    if (item.route === ROUTES.accountManage) {
+      navigation.navigate(ROUTES.accountManage);
+      return;
+    }
+
+    if (item.route === ROUTES.qrScanner) {
+      navigation.navigate(ROUTES.qrScanner);
     }
   };
 

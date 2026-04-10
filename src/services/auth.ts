@@ -55,9 +55,11 @@ export async function refreshAccessToken(): Promise<LoginResponse> {
   const refreshToken = await getRefreshToken();
 
   if (!refreshToken) {
+    console.warn('[Auth] No refresh token available');
     throw new AuthError(MISSING_REFRESH_TOKEN_MESSAGE);
   }
 
+  console.log('[Auth] Calling refresh token API...');
   let res: Response;
 
   try {
@@ -70,24 +72,30 @@ export async function refreshAccessToken(): Promise<LoginResponse> {
       body: refreshToken,
     });
   } catch (error) {
+    console.warn('[Auth] Refresh token network error:', error);
     throw new NetworkError(NETWORK_ERROR_MESSAGE, {cause: error});
   }
+
+  console.log('[Auth] Refresh token API response status:', res.status);
 
   let result: ResponseResult<LoginResponse>;
 
   try {
     result = await res.json();
   } catch (error) {
+    console.warn('[Auth] Failed to parse refresh response:', error);
     throw new ServerError(INVALID_RESPONSE_MESSAGE, {cause: error});
   }
 
   if (!res.ok || result.code !== 200) {
+    console.warn('[Auth] Refresh token failed:', result.message, 'code:', result.code);
     throw new AuthError(result.message || REFRESH_AUTH_FAILED_MESSAGE, {
       code: result.code || res.status,
       details: result,
     });
   }
 
+  console.log('[Auth] Refresh token succeeded');
   return result.data;
 }
 

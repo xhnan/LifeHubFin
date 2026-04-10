@@ -59,16 +59,25 @@ async function tryRefreshToken(): Promise<string | null> {
   if (!refreshTokenPromise) {
     refreshTokenPromise = (async () => {
       try {
+        console.log('[TokenRefresh] Starting token refresh...');
         const loginResponse = await refreshAccessToken();
         await saveAuthTokens(loginResponse);
+        console.log('[TokenRefresh] Token refresh succeeded');
         return loginResponse.token;
-      } catch {
+      } catch (error) {
+        console.warn('[TokenRefresh] Token refresh failed:', error);
+        if (error instanceof NetworkError) {
+          // Network errors should not log user out — token may still be valid
+          throw error;
+        }
         await handleTokenExpired();
         return null;
       } finally {
         refreshTokenPromise = null;
       }
     })();
+  } else {
+    console.log('[TokenRefresh] Waiting for existing refresh promise...');
   }
 
   return refreshTokenPromise;
@@ -107,18 +116,22 @@ export async function authFetch<T>(
   let res = await sendRequest(path, options, token);
 
   if (res.status === 401) {
+    console.log('[AuthFetch] Got 401, attempting token refresh...');
     const newToken = await tryRefreshToken();
 
     if (!newToken) {
+      console.log('[AuthFetch] Token refresh failed, throwing auth error');
       throw createAuthExpiredError();
     }
 
+    console.log('[AuthFetch] Retrying request with new token');
     res = await sendRequest(path, options, newToken);
   }
 
   let result = await parseResponseResult<T>(res);
 
   if (isTokenExpiredResult(result)) {
+    console.log('[AuthFetch] Token expired detected in response body:', result.message);
     const newToken = await tryRefreshToken();
 
     if (!newToken) {
@@ -129,6 +142,7 @@ export async function authFetch<T>(
     result = await parseResponseResult<T>(res);
 
     if (res.status === 401 || isTokenExpiredResult(result)) {
+      console.log('[AuthFetch] Token still expired after refresh, logging out');
       await handleTokenExpired();
       throw createAuthExpiredError();
     }

@@ -9,8 +9,10 @@ export type RootStackParamList = {
   [ROUTES.home]: undefined;
   [ROUTES.add]: undefined;
   [ROUTES.bookManage]: undefined;
+  [ROUTES.accountManage]: undefined;
   [ROUTES.receipt]: {initialImageUri?: string} | undefined;
   [ROUTES.transactionDetail]: {transaction: TransactionItem};
+  [ROUTES.qrScanner]: undefined;
 };
 
 export type MainTabParamList = {

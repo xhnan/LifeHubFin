@@ -50,3 +50,19 @@ export async function getAccounts(bookId: number): Promise<Account[]> {
     level: subject.level ?? 0,
   }));
 }
+
+export interface SortWeightUpdate {
+  id: number | string;
+  sortWeight: number | null;
+}
+
+/** 批量更新账户排序权重 */
+export async function updateAccountOrders(
+  bookId: number,
+  items: SortWeightUpdate[],
+): Promise<void> {
+  return authFetch<void>('/fin/accounts/sort-weight', {
+    method: 'PUT',
+    body: JSON.stringify({bookId, items}),
+  });
+}

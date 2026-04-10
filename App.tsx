@@ -11,9 +11,11 @@ import AddScreen from './src/screens/AddScreen';
 import DiscoverScreen from './src/screens/DiscoverScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import BookManageScreen from './src/screens/BookManageScreen';
+import AccountManageScreen from './src/screens/AccountManageScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import ReceiptScreen from './src/screens/ReceiptScreen';
 import TransactionDetailScreen from './src/screens/TransactionDetailScreen';
+import QrScannerScreen from './src/screens/QrScannerScreen';
 import {UpdateModal} from './src/components/UpdateModal';
 import {ROUTES} from './src/constants/routes';
 import {useAppStartup} from './src/hooks/useAppStartup';
@@ -261,6 +263,14 @@ const App = () => {
               }}
             />
             <Stack.Screen
+              name={ROUTES.accountManage}
+              component={AccountManageScreen}
+              options={{
+                headerShown: false,
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
               name={ROUTES.receipt}
               component={ReceiptScreen}
               options={{
@@ -275,6 +285,14 @@ const App = () => {
                 headerShown: false,
                 presentation: 'transparentModal',
                 animation: 'fade',
+              }}
+            />
+            <Stack.Screen
+              name={ROUTES.qrScanner}
+              component={QrScannerScreen}
+              options={{
+                headerShown: false,
+                animation: 'slide_from_bottom',
               }}
             />
           </Stack.Navigator>
