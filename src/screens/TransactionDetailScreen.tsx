@@ -596,7 +596,7 @@ const TransactionDetailScreen = ({
               <View style={styles.amountCard}>
                 <View style={styles.amountIconWrap}>
                   <IconifyIcon
-                    icon={displayData.categoryIcon}
+                    icon={displayData.categoryIcon || TEXT.categoryFallback}
                     size={48}
                     color="#3B7DD8"
                     fallback={TEXT.categoryFallback}

@@ -18,8 +18,14 @@ interface JwtPayload {
 }
 
 function decodeBase64(base64: string): string {
-  if (typeof globalThis.atob === 'function') {
-    return globalThis.atob(base64);
+  const globalAtob = (
+    globalThis as typeof globalThis & {
+      atob?: (input: string) => string;
+    }
+  ).atob;
+
+  if (typeof globalAtob === 'function') {
+    return globalAtob(base64);
   }
 
   const maybeBuffer = (

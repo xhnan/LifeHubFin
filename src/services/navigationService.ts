@@ -37,7 +37,12 @@ export function navigate<RouteName extends keyof RootStackParamList>(
   params?: RootStackParamList[RouteName],
 ) {
   if (navigationRef.isReady()) {
-    navigationRef.navigate(name, params);
+    // React Navigation's typed navigate cannot narrow the tuple from a generic
+    // RouteName, so we cast the arguments while keeping the wrapper type-safe.
+    (navigationRef.navigate as (...args: [RouteName, RootStackParamList[RouteName]?]) => void)(
+      name,
+      params,
+    );
   }
 }
 

@@ -26,6 +26,8 @@ export interface TransactionDetail {
   transType: 'INCOME' | 'EXPENSE' | 'TRANSFER' | 'OTHER';
   description: string;
   amount: string;
+  categoryName?: string;
+  categoryIcon?: string;
   attachmentId?: string;
   bookId: number;
   tags: TagInfo[];
