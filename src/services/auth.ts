@@ -11,6 +11,63 @@ const MISSING_REFRESH_TOKEN_MESSAGE = '\u7f3a\u5c11\u5237\u65b0\u4ee4\u724c';
 const INVALID_RESPONSE_MESSAGE = '\u670d\u52a1\u5668\u54cd\u5e94\u683c\u5f0f\u9519\u8bef';
 const REFRESH_AUTH_FAILED_MESSAGE =
   '\u5237\u65b0\u767b\u5f55\u72b6\u6001\u5931\u8d25';
+const TOKEN_EXPIRY_SKEW_MS = 30 * 1000;
+
+interface JwtPayload {
+  exp?: number;
+}
+
+function decodeBase64(base64: string): string {
+  if (typeof globalThis.atob === 'function') {
+    return globalThis.atob(base64);
+  }
+
+  const maybeBuffer = (
+    globalThis as typeof globalThis & {
+      Buffer?: {
+        from: (
+          input: string,
+          encoding: string,
+        ) => {
+          toString: (encoding: string) => string;
+        };
+      };
+    }
+  ).Buffer;
+
+  if (maybeBuffer) {
+    return maybeBuffer.from(base64, 'base64').toString('utf8');
+  }
+
+  throw new Error('No base64 decoder available');
+}
+
+function decodeJwtPayload(token: string): JwtPayload | null {
+  const parts = token.split('.');
+
+  if (parts.length < 2) {
+    return null;
+  }
+
+  try {
+    const normalized = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padding = '='.repeat((4 - (normalized.length % 4 || 4)) % 4);
+    return JSON.parse(decodeBase64(`${normalized}${padding}`)) as JwtPayload;
+  } catch (error) {
+    console.warn('[Auth] Failed to decode jwt payload:', error);
+    return null;
+  }
+}
+
+export function isTokenExpired(token: string, skewMs = TOKEN_EXPIRY_SKEW_MS): boolean {
+  const payload = decodeJwtPayload(token);
+
+  if (!payload?.exp) {
+    return false;
+  }
+
+  return payload.exp * 1000 <= Date.now() + skewMs;
+}
 
 export interface LoginResponse {
   token: string;
@@ -123,6 +180,23 @@ export async function getToken(): Promise<string | null> {
 
 export async function getRefreshToken(): Promise<string | null> {
   return AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+export async function restoreSessionToken(): Promise<string | null> {
+  const token = await getToken();
+
+  if (!token) {
+    return null;
+  }
+
+  if (!isTokenExpired(token)) {
+    return token;
+  }
+
+  console.log('[Auth] Local access token expired during app startup, refreshing...');
+  const loginResponse = await refreshAccessToken();
+  await saveAuthTokens(loginResponse);
+  return loginResponse.token;
 }
 
 export async function removeToken(): Promise<void> {

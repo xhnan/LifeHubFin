@@ -17,7 +17,7 @@ import type {
   RootStackNavigationPropType,
   TransactionDetailRouteProp,
 } from '../navigation/types';
-import type {Account} from '../services/account';
+import {getAccountSortValue, type Account} from '../services/account';
 import {getErrorMessage} from '../services/errors';
 import {
   deleteTransaction,
@@ -129,7 +129,9 @@ const uniqueAccountsById = (list: Account[]): Account[] => {
 };
 
 const sortByWeight = (list: Account[]) =>
-  [...list].sort((left, right) => (left.sortWeight ?? 0) - (right.sortWeight ?? 0));
+  [...list].sort(
+    (left, right) => getAccountSortValue(left) - getAccountSortValue(right),
+  );
 
 const formatFullDateTime = (dateStr: string) => {
   const date = new Date(dateStr);
@@ -183,51 +185,81 @@ const getEditableEntries = (
   const formattedAmount = amount.toFixed(2);
 
   if (detail.transType === 'EXPENSE') {
-    const debitEntry = detail.entries.find(entry => entry.direction === 'DEBIT');
-    if (!debitEntry) {
+    const debitEntryIndex = detail.entries.findIndex(entry => entry.direction === 'DEBIT');
+    const creditEntryIndex = detail.entries.findIndex(entry => entry.direction === 'CREDIT');
+
+    if (debitEntryIndex < 0) {
       throw new Error(TEXT.missingExpenseEntry);
     }
 
-    return [
-      {
-        ...debitEntry,
-        amount: formattedAmount,
-      },
-      {
-        accountId: Number(paymentAccountId),
-        accountName: '',
-        accountIcon: '',
-        accountType: 'ASSET',
-        direction: 'CREDIT',
-        amount: formattedAmount,
-      },
-    ];
+    if (creditEntryIndex < 0) {
+      throw new Error(TEXT.accountNotSelectedMessage);
+    }
+
+    return detail.entries.map((entry, index) => {
+      if (index === debitEntryIndex) {
+        return {
+          ...entry,
+          amount: formattedAmount,
+        };
+      }
+
+      if (index === creditEntryIndex) {
+        return {
+          ...entry,
+          accountId: Number(paymentAccountId),
+          amount: formattedAmount,
+        };
+      }
+
+      return entry;
+    });
   }
 
   if (detail.transType === 'INCOME') {
-    const creditEntry = detail.entries.find(entry => entry.direction === 'CREDIT');
-    if (!creditEntry) {
+    const debitEntryIndex = detail.entries.findIndex(entry => entry.direction === 'DEBIT');
+    const creditEntryIndex = detail.entries.findIndex(entry => entry.direction === 'CREDIT');
+
+    if (creditEntryIndex < 0) {
       throw new Error(TEXT.missingIncomeEntry);
     }
 
-    return [
-      {
-        accountId: Number(paymentAccountId),
-        accountName: '',
-        accountIcon: '',
-        accountType: 'ASSET',
-        direction: 'DEBIT',
-        amount: formattedAmount,
-      },
-      {
-        ...creditEntry,
-        amount: formattedAmount,
-      },
-    ];
+    if (debitEntryIndex < 0) {
+      throw new Error(TEXT.accountNotSelectedMessage);
+    }
+
+    return detail.entries.map((entry, index) => {
+      if (index === debitEntryIndex) {
+        return {
+          ...entry,
+          accountId: Number(paymentAccountId),
+          amount: formattedAmount,
+        };
+      }
+
+      if (index === creditEntryIndex) {
+        return {
+          ...entry,
+          amount: formattedAmount,
+        };
+      }
+
+      return entry;
+    });
   }
 
   throw new Error(TEXT.unsupportedEditError);
 };
+
+const toEntryRequest = (entry: TransactionEntry) => ({
+  accountId: entry.accountId,
+  direction: entry.direction,
+  amount: entry.amount,
+  memo: entry.memo,
+  quantity: entry.quantity ?? undefined,
+  price: entry.price ?? undefined,
+  commodityCode: entry.commodityCode ?? undefined,
+});
 
 const TransactionDetailScreen = ({
   route,
@@ -429,12 +461,11 @@ const TransactionDetailScreen = ({
       const entries = getEditableEntries(fullDetail, parsedAmount, editPaymentAccountId);
 
       await updateTransaction(transaction.transId, {
+        transDate: fullDetail.transDate,
         description,
+        attachmentId: fullDetail.attachmentId,
         entries: entries.map(entry => ({
-          accountId: entry.accountId,
-          direction: entry.direction,
-          amount: entry.amount,
-          memo: entry.memo,
+          ...toEntryRequest(entry),
         })),
         tagIds: fullDetail.tags.map(tag => tag.tagId),
       });

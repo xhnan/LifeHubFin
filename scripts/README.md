@@ -1,121 +1,111 @@
-# 版本发布脚本使用说明
+# 发布脚本说明
 
-## 快速开始
-
-### 仅更新版本号（不构建）
-```bash
-npm run bump:patch   # 补丁版本：0.0.1 → 0.0.2
-npm run bump:minor   # 次版本：0.0.1 → 0.1.0
-npm run bump:major   # 主版本：0.0.1 → 1.0.0
-```
-
-### 更新版本号 + 构建 APK
-```bash
-npm run release:patch   # 补丁版本 + 构建
-npm run release:minor   # 次版本 + 构建
-npm run release:major   # 主版本 + 构建
-```
-
-### 完整发布流程（更新 + 构建 + 生成上传命令）
-```bash
-npm run publish:patch   # 补丁版本完整发布
-npm run publish:minor   # 次版本完整发布
-npm run publish:major   # 主版本完整发布
-```
-
----
-
-## 执行流程
-
-### 方式一：分步执行（推荐）
+## 常用命令
 
 ```bash
-# 1. 更新版本号
-npm run bump:patch
+# 只升级版本号（默认 patch）
+npm run bump
 
-# 2. 提交代码
-git add .
-git commit -m "chore: bump version to 0.0.2"
+# 升级版本号并构建 APK
+npm run release
 
-# 3. 构建 APK
-cd android && ./gradlew assembleRelease
+# 升级版本号、构建 APK、上传后端
+npm run publish
 
-# 4. 上传到后端
-# 使用脚本生成的 upload-apk.bat (Windows) 或 upload-apk.sh (Mac/Linux)
+# 使用当前版本和当前 APK 重新上传
+npm run reupload
 ```
 
-### 方式二：一键构建
+## 推荐流程
+
+### 正常发布
 
 ```bash
-# 更新版本号并构建 APK
-npm run release:patch
-
-# 然后手动上传生成的 APK
+npm run publish -- --log "修复若干问题"
 ```
 
----
+脚本会自动完成这几件事：
 
-## 配置说明
+1. 更新 `package.json`
+2. 更新 `src/config/version.ts`
+3. 更新 `android/app/build.gradle`
+4. 构建 `release` APK
+5. 上传到后端发布接口
 
-编辑 `scripts/publish.config.js` 来自定义配置：
+### 后端没启动，稍后补传
 
-```javascript
+如果你已经成功构建过 APK，但发布时后端没启动，可以在后端恢复后直接执行：
+
+```bash
+npm run reupload -- --log "补传 5.0.3 APK"
+```
+
+这个命令会：
+
+1. 保持当前版本号不变
+2. 不重新构建 APK
+3. 校验版本文件是否一致
+4. 直接上传现成的 `app-release.apk`
+
+## APK 默认路径
+
+```text
+android/app/build/outputs/apk/release/app-release.apk
+```
+
+## 配置文件
+
+发布配置位于 `scripts/publish.config.cjs`，支持：
+
+```js
 module.exports = {
-  // 后端 API 地址
-  apiBaseUrl: 'http://120.78.0.54:9000',
-
-  // 发布接口
+  apiBaseUrl: 'http://localhost:9000',
   publishEndpoint: '/sys/app-version/quick-publish',
-
-  // APK 输出路径
   apkPath: './android/app/build/outputs/apk/release/app-release.apk',
-
-  // 默认更新日志
   defaultUpdateLog: '版本更新',
 };
 ```
 
----
-
-## 上传 APK 到后端
-
-执行 `npm run publish:patch` 后，脚本会生成上传命令文件：
-
-### Windows
-双击 `upload-apk.bat` 文件
-
-### Mac/Linux
-```bash
-bash upload-apk.sh
-```
-
-或手动复制脚本输出的 curl 命令执行。
-
----
-
-## 注意事项
-
-1. **首次构建**需要先运行：
-   ```bash
-   cd android
-   ./gradlew assembleRelease
-   ```
-
-2. **构建时间**：首次构建可能需要 5-10 分钟下载依赖
-
-3. **APK 位置**：构建完成后在 `android/app/build/outputs/apk/release/app-release.apk`
-
-4. **版本号规则**：
-   - 补丁：修复 bug（0.0.1 → 0.0.2）
-   - 次版本：新增功能（0.0.1 → 0.1.0）
-   - 主版本：重大变更（0.0.1 → 1.0.0）
-
----
-
-## 生成 Git 标签（可选）
+也可以在项目根目录 `.env` 中配置：
 
 ```bash
-# 发布后打标签
-git tag v0.0.2
-git push origin v0.0.2
+API_BASE_URL=http://localhost:9000
 ```
+
+## 常见问题
+
+### 1. `reupload` 提示版本不一致
+
+说明下面三个文件里的版本没有对齐：
+
+- `package.json`
+- `src/config/version.ts`
+- `android/app/build.gradle`
+
+先统一版本后再重传，避免把错误版本号的 APK 上传上去。
+
+### 2. 提示找不到 APK
+
+先执行：
+
+```bash
+npm run release
+```
+
+或者确认 `android/app/build/outputs/apk/release/app-release.apk` 已存在。
+
+### 3. 后端返回 413
+
+说明后端上传大小限制太小，需要检查服务端的 multipart 配置，例如：
+
+```yaml
+spring:
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
+```
+
+### 4. 上传失败但我想手动补传
+
+脚本失败时会自动打印一份可直接执行的 `curl` 命令，方便你手动排查或补传。

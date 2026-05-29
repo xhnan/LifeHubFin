@@ -7,6 +7,7 @@ export interface Account {
   code?: string;
   accountType: 'ASSET' | 'LIABILITY' | 'EQUITY' | 'INCOME' | 'EXPENSE';
   icon: string;
+  userSort?: number;
   sortWeight?: number;
   parentId?: number | string | null;
   level?: number;
@@ -53,7 +54,12 @@ export async function getAccounts(bookId: number): Promise<Account[]> {
 
 export interface SortWeightUpdate {
   id: number | string;
+  userSort: number | null;
   sortWeight: number | null;
+}
+
+export function getAccountSortValue(account: Account): number {
+  return account.userSort ?? account.sortWeight ?? 0;
 }
 
 /** 批量更新账户排序权重 */

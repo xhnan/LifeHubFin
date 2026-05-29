@@ -5,18 +5,31 @@ import {removeAuthTokens} from './auth';
 
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
-let tokenExpiredCallback: (() => void) | null = null;
+const tokenExpiredListeners = new Set<() => void>();
+let handleTokenExpiredPromise: Promise<void> | null = null;
 
-export function registerTokenExpiredCallback(callback: () => void) {
-  tokenExpiredCallback = callback;
+export function registerTokenExpiredCallback(callback: () => void): () => void {
+  tokenExpiredListeners.add(callback);
+
+  return () => {
+    tokenExpiredListeners.delete(callback);
+  };
 }
 
 export async function handleTokenExpired() {
-  await removeAuthTokens();
+  if (!handleTokenExpiredPromise) {
+    handleTokenExpiredPromise = (async () => {
+      await removeAuthTokens();
 
-  if (tokenExpiredCallback) {
-    tokenExpiredCallback();
+      tokenExpiredListeners.forEach(listener => {
+        listener();
+      });
+    })().finally(() => {
+      handleTokenExpiredPromise = null;
+    });
   }
+
+  await handleTokenExpiredPromise;
 }
 
 export function navigate<RouteName extends keyof RootStackParamList>(

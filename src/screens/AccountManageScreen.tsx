@@ -11,8 +11,13 @@ import {
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
-import {updateAccountOrders, Account} from '../services/account';
+import {
+  updateAccountOrders,
+  getAccountSortValue,
+  Account,
+} from '../services/account';
 import {useFinanceStore} from '../store/FinanceStore';
+import IconifyIcon from '../components/IconifyIcon';
 
 export default function AccountManageScreen() {
   const navigation = useNavigation();
@@ -31,7 +36,9 @@ export default function AccountManageScreen() {
         : subjectCategories.expense.occurrenceSubjects;
     
     // Sort by sortWeight descending (越大越靠前)
-    const sorted = [...items].sort((a, b) => (b.sortWeight ?? 0) - (a.sortWeight ?? 0));
+    const sorted = [...items].sort(
+      (a, b) => getAccountSortValue(b) - getAccountSortValue(a),
+    );
     setDataList(sorted);
     setHasChanges(false);
   }, [subjectCategories, activeTab]);
@@ -64,6 +71,7 @@ export default function AccountManageScreen() {
         let weight = (dataList.length - index) * 10;
         return {
           id: item.id,
+          userSort: weight,
           sortWeight: weight,
         };
       });
@@ -90,6 +98,7 @@ export default function AccountManageScreen() {
           try {
             const updates = dataList.map((item) => ({
               id: item.id,
+              userSort: null,
               sortWeight: null,
             }));
             await updateAccountOrders(selectedBookId, updates);
@@ -108,7 +117,7 @@ export default function AccountManageScreen() {
 
   const renderItem = ({item, index}: {item: Account; index: number}) => (
     <View style={styles.itemRow}>
-      <Text style={styles.itemIcon}>{item.icon || '💳'}</Text>
+      <IconifyIcon icon={item.icon || '💳'} size={24} color="#333" />
       <View style={styles.itemContent}>
         <Text style={styles.itemName}>{item.name}</Text>
         {item.fullName && item.fullName !== item.name && (

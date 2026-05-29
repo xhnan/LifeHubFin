@@ -15,7 +15,7 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Account } from '../services/account';
+import {Account, getAccountSortValue} from '../services/account';
 import { useFinanceStore } from '../store/FinanceStore';
 import IconifyIcon from '../components/IconifyIcon';
 import DateTimePickerComponent from '../components/DateTimePicker';
@@ -152,7 +152,7 @@ const uniqueAccountsById = (list: Account[]): Account[] => {
 };
 
 const sortByWeight = (list: Account[]): Account[] =>
-  [...list].sort((a, b) => (a.sortWeight ?? 0) - (b.sortWeight ?? 0));
+  [...list].sort((a, b) => getAccountSortValue(a) - getAccountSortValue(b));
 
 const AddScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
@@ -160,10 +160,11 @@ const AddScreen = ({ navigation }: any) => {
   const [mode, setMode] = useState<QuickMode>('expense');
   const [description, setDescription] = useState('');
   const [amountStr, setAmountStr] = useState('');
+  const [noteFocused, setNoteFocused] = useState(false);
   const [transDate, setTransDate] = useState(() => {
     const n = new Date();
     const pad = (v: number) => String(v).padStart(2, '0');
-    return `${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())} ${pad(n.getHours())}:${pad(n.getMinutes())}`;
+    return `${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}`;
   });
 
   // 从全局 store 读取缓存数据
@@ -393,8 +394,14 @@ const AddScreen = ({ navigation }: any) => {
     if (!ents) return;
     const dp = transDate.replace(' ', 'T').split(/[-T:]/);
     const da = dp.map(Number);
-    if (da.length < 5) { Alert.alert('提示', '日期格式错误'); return; }
-    while (da.length < 6) da.push(0);
+    if (da.length < 3) { Alert.alert('提示', '日期格式错误'); return; }
+    if (da.length < 6) {
+      const now = new Date();
+      while (da.length < 6) da.push(0);
+      da[3] = now.getHours();
+      da[4] = now.getMinutes();
+      da[5] = now.getSeconds();
+    }
     setSubmitting(true);
     try {
       await createTransaction({ transDate: da as any, description: desc, bookId: selectedBookId, tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined, entries: ents });
@@ -592,7 +599,9 @@ const AddScreen = ({ navigation }: any) => {
 
       {/* Bottom Area: Note Input & Display Amt & Keyboard */}
       {mode !== 'advanced' && (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Math.max(insets.bottom, 8)}>
           <View style={$.bottomArea}>
 
             {/* Pay Accounts Scroll (Single Row) */}
@@ -624,6 +633,10 @@ const AddScreen = ({ navigation }: any) => {
                 value={description}
                 onChangeText={setDescription}
                 maxLength={40}
+                returnKeyType="done"
+                blurOnSubmit
+                onFocus={() => setNoteFocused(true)}
+                onBlur={() => setNoteFocused(false)}
               />
               <View style={$.amtWrap}>
                 <Text style={$.amtCurrency}>¥</Text>
@@ -632,7 +645,9 @@ const AddScreen = ({ navigation }: any) => {
             </View>
 
             {/* Custom Keypad */}
-            <View style={$.keypad}>
+            {!noteFocused ? (
+              <>
+                <View style={$.keypad}>
               {KEYPAD.map((row, i) => (
                 <View style={$.keyRow} key={`row_${i}`}>
                   {row.map(btn => {
@@ -660,8 +675,12 @@ const AddScreen = ({ navigation }: any) => {
                   })}
                 </View>
               ))}
-            </View>
-            <View style={keypadBottomSafeStyle} />
+                </View>
+                <View style={keypadBottomSafeStyle} />
+              </>
+            ) : (
+              <View style={$.noteKeyboardSpacer} />
+            )}
           </View>
         </KeyboardAvoidingView>
       )}
@@ -709,6 +728,7 @@ const AddScreen = ({ navigation }: any) => {
       <DateTimePickerComponent
         visible={datePickerVisible}
         value={transDate}
+        mode="date"
         onConfirm={(dateTime) => { setTransDate(dateTime); setDatePickerVisible(false); }}
         onCancel={() => setDatePickerVisible(false)}
       />
@@ -761,6 +781,7 @@ const $ = StyleSheet.create({
   inputRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, height: 52, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E8E8E8' },
   noteLabel: { color: '#bbb', marginHorizontal: 6 },
   noteInput: { flex: 1, fontSize: 14, color: '#333', paddingVertical: 0 },
+  noteKeyboardSpacer: { height: 12, backgroundColor: '#FFF' },
   amtWrap: { flexDirection: 'row', alignItems: 'baseline', marginLeft: 8, maxWidth: 180 },
   amtCurrency: { fontSize: 16, color: THEME, fontWeight: '600', marginRight: 2 },
   amtValue: { fontSize: 28, color: '#111', fontWeight: '800' },

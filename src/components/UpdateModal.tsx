@@ -13,6 +13,7 @@ import {
   downloadAPK,
   installAPK,
   EnhancedDownloadProgress,
+  resumeAPKDownload,
 } from '../services/updateManager';
 
 interface UpdateModalProps {
@@ -42,6 +43,45 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
       progressAnim.setValue(0);
     }
   }, [progress, progressAnim]);
+
+  useEffect(() => {
+    if (!visible || !versionInfo?.fileUrl || downloading) {
+      return;
+    }
+
+    let active = true;
+
+    const resumeDownload = async () => {
+      try {
+        const resumedFilePath = await resumeAPKDownload(versionInfo.fileUrl, p => {
+          if (!active) {
+            return;
+          }
+          setDownloading(true);
+          setProgress(p);
+        });
+
+        if (!active || !resumedFilePath) {
+          return;
+        }
+
+        setDownloading(true);
+        await installAPK(resumedFilePath);
+      } catch (err: any) {
+        if (!active) {
+          return;
+        }
+        setError(err.message);
+        setDownloading(false);
+      }
+    };
+
+    resumeDownload();
+
+    return () => {
+      active = false;
+    };
+  }, [downloading, visible, versionInfo]);
 
   const handleUpdate = async () => {
     if (!versionInfo?.fileUrl) {

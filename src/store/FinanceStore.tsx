@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useRef,
 } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {getMyBooks, Book} from '../services/book';
 import {
   getAccountCategories,
@@ -28,6 +29,7 @@ interface FinanceStoreState {
 }
 
 const FinanceStoreContext = createContext<FinanceStoreState | null>(null);
+const SELECTED_BOOK_ID_STORAGE_KEY = 'lifehubfin_selected_book_id';
 
 export const useFinanceStore = (): FinanceStoreState => {
   const ctx = useContext(FinanceStoreContext);
@@ -50,6 +52,19 @@ export const FinanceStoreProvider: React.FC<{children: React.ReactNode}> = ({
   const [initialized, setInitialized] = useState(false);
 
   const bookIdRef = useRef<number | null>(null);
+
+  const persistSelectedBookId = useCallback(async (bookId: number | null) => {
+    try {
+      if (bookId == null) {
+        await AsyncStorage.removeItem(SELECTED_BOOK_ID_STORAGE_KEY);
+        return;
+      }
+
+      await AsyncStorage.setItem(SELECTED_BOOK_ID_STORAGE_KEY, String(bookId));
+    } catch (error) {
+      console.warn('[FinanceStore] failed to persist selected book id:', error);
+    }
+  }, []);
 
   const loadBookData = useCallback(async (bookId: number) => {
     try {
@@ -76,13 +91,23 @@ export const FinanceStoreProvider: React.FC<{children: React.ReactNode}> = ({
   const initStore = useCallback(async () => {
     setInitializing(true);
     try {
-      const bks = await getMyBooks();
+      const [bks, savedBookId] = await Promise.all([
+        getMyBooks(),
+        AsyncStorage.getItem(SELECTED_BOOK_ID_STORAGE_KEY),
+      ]);
       setBooks(bks);
+
       if (bks.length > 0) {
-        const firstId = bks[0].id;
-        setSelectedBookId(firstId);
-        bookIdRef.current = firstId;
-        await loadBookData(firstId);
+        const parsedSavedBookId = savedBookId ? Number(savedBookId) : null;
+        const matchedBookId =
+          parsedSavedBookId != null && bks.some(book => book.id === parsedSavedBookId)
+            ? parsedSavedBookId
+            : bks[0].id;
+
+        setSelectedBookId(matchedBookId);
+        bookIdRef.current = matchedBookId;
+        await persistSelectedBookId(matchedBookId);
+        await loadBookData(matchedBookId);
       }
     } catch {
       // Ignore init errors and allow app to continue.
@@ -90,7 +115,7 @@ export const FinanceStoreProvider: React.FC<{children: React.ReactNode}> = ({
       setInitializing(false);
       setInitialized(true);
     }
-  }, [loadBookData]);
+  }, [loadBookData, persistSelectedBookId]);
 
   const switchBook = useCallback(
     async (bookId: number) => {
@@ -99,9 +124,10 @@ export const FinanceStoreProvider: React.FC<{children: React.ReactNode}> = ({
       }
       setSelectedBookId(bookId);
       bookIdRef.current = bookId;
+      await persistSelectedBookId(bookId);
       await loadBookData(bookId);
     },
-    [loadBookData],
+    [loadBookData, persistSelectedBookId],
   );
 
   const refreshAll = useCallback(async () => {
@@ -114,6 +140,7 @@ export const FinanceStoreProvider: React.FC<{children: React.ReactNode}> = ({
         const firstId = bks[0].id;
         setSelectedBookId(firstId);
         bookIdRef.current = firstId;
+        await persistSelectedBookId(firstId);
       }
 
       if (bookIdRef.current) {
@@ -122,7 +149,7 @@ export const FinanceStoreProvider: React.FC<{children: React.ReactNode}> = ({
     } catch {
       // Ignore refresh errors.
     }
-  }, [loadBookData]);
+  }, [loadBookData, persistSelectedBookId]);
 
   const refreshBookData = useCallback(async () => {
     if (bookIdRef.current) {

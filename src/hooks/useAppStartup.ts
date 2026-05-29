@@ -2,8 +2,11 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import {AppState, InteractionManager} from 'react-native';
 import SplashScreen from 'react-native-splash-screen';
 
-import {getToken} from '../services/auth';
-import {registerTokenExpiredCallback} from '../services/navigationService';
+import {restoreSessionToken} from '../services/auth';
+import {
+  handleTokenExpired,
+  registerTokenExpiredCallback,
+} from '../services/navigationService';
 import {cleanupUpdateCache} from '../services/updateManager';
 import {checkForUpdatesAuto} from '../services/versionCheck';
 import type {VersionCheckResponse} from '../types/version';
@@ -55,11 +58,12 @@ export function useAppStartup() {
       console.warn('[App] cleanup update cache failed:', err);
     });
 
-    registerTokenExpiredCallback(() => {
+    const unregisterTokenExpiredCallback = registerTokenExpiredCallback(() => {
       setToken(null);
+      setShowUpdateModal(false);
     });
 
-    getToken()
+    restoreSessionToken()
       .then(nextToken => {
         if (!isMountedRef.current) {
           return;
@@ -71,6 +75,10 @@ export function useAppStartup() {
           runVersionCheck();
         }
       })
+      .catch(async error => {
+        console.warn('[App] failed to restore auth session:', error);
+        await handleTokenExpired();
+      })
       .finally(() => {
         if (!isMountedRef.current) {
           return;
@@ -79,6 +87,10 @@ export function useAppStartup() {
         setAuthInitialized(true);
         SplashScreen.hide();
       });
+
+    return () => {
+      unregisterTokenExpiredCallback();
+    };
   }, [runVersionCheck]);
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 {
   "name": "LifeHubFin",
-  "version": "5.0.0",
+  "version": "5.0.5",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
@@ -8,16 +8,10 @@
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest",
-    "bump": "node scripts/bump-version.cjs",
-    "bump:patch": "node scripts/bump-version.cjs patch",
-    "bump:minor": "node scripts/bump-version.cjs minor",
-    "bump:major": "node scripts/bump-version.cjs major",
-    "release:patch": "node scripts/bump-version.cjs patch --build",
-    "release:minor": "node scripts/bump-version.cjs minor --build",
-    "release:major": "node scripts/bump-version.cjs major --build",
-    "publish:patch": "node scripts/bump-version.cjs patch --build --upload",
-    "publish:minor": "node scripts/bump-version.cjs minor --build --upload",
-    "publish:major": "node scripts/bump-version.cjs major --build --upload"
+    "bump": "node scripts/bump-version.cjs patch",
+    "release": "node scripts/bump-version.cjs patch --build",
+    "publish": "node scripts/bump-version.cjs patch --build --upload",
+    "reupload": "node scripts/bump-version.cjs --upload-only"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
